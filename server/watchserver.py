@@ -1,28 +1,16 @@
 #!/usr/bin/env python3
 
 from flask import Flask, request, url_for
+
 import datetime
+
+# The code to keep track of our reporting stations:
+import stations
 
 # set the project root directory as the static folder, you can set others.
 app = Flask(__name__, static_url_path='')
 
-# A list of dictionaries with various quantities we can report,
-# which must include "name" and should include 'time' (datetime of last update).
-# For example, station[0] might be { 'name': office, 'temperature': 73 }
-# Values may be numbers or strings.
-stations = []
-
-def populate_bogostations():
-    stations.append({ 'name': 'office',     'temperature': 73, 'humidity': 10 })
-    stations.append({ 'name': 'patio',      'temperature': 73, 'humidity': 6 })
-    stations.append({ 'name': 'bedroom',    'temperature': 73, 'humidity': 9 })
-    stations.append({ 'name': 'guest room', 'temperature': 73, 'humidity': 12 })
-    stations.append({ 'name': 'garden',     'temperature': 73, 'humidity': 4 })
-    stations.append({ 'name': 'kitchen',    'temperature': 73, 'humidity': 7 })
-    for st in stations:
-        st['time'] = datetime.datetime.now()
-
-populate_bogostations()
+stations.initialize()
 
 def stations_as_html():
     outstr = ''
@@ -78,7 +66,7 @@ def show_stations():
 %s
 
 </body>
-</html>''' % stations_as_html()
+</html>''' % stations.stations_as_html()
 
 @app.route('/post/<int:post_id>')
 def show_post(post_id):
@@ -94,6 +82,24 @@ def report(stationname):
     if request.method == 'POST':
         print("Got a report:", request, request.form)
         print("Keys:", ', '.join(list(request.form.keys())))
+
+        # request.form is type ImmutableMultiDict, which isn't too useful:
+        # first, it's immutable, and second, indexed items seem to be
+        # lists of strings instead of just strings, though this doesn't
+        # seem to be documented anywhere.
+        # Turn it into a normal dictionary like we use in stations.py:
+        vals = request.form.to_dict()
+
+        # Make sure we have a station name:
+        if 'name' not in vals:
+            print("Adding name", stationname)
+            vals['name'] = stationname
+
+        # If it doesn't have a last-updated time, add one:
+        vals['time'] = datetime.datetime.now()
+
+        stations.add_station(vals)
+
         retstr = ''
         for key in request.form:
             retstr += '%s: %s\n' % (key, request.form[key])

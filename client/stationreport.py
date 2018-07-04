@@ -1,9 +1,9 @@
 #!/usr/bin/env python3
 
 import requests
+import sys
 
-def post_report(server, stationname, port=None):
-    payload = {'temperature': '79', 'humidity': '7'}
+def post_report(server, stationname, payload, port=None):
     if port:
         url = "http://%s:%d/report/%s" % (server, port, stationname)
     else:
@@ -13,7 +13,18 @@ def post_report(server, stationname, port=None):
     return requests.post(url, data=payload)
 
 if __name__ == '__main__':
-    r = post_report("127.0.0.1", "office", port=5000)
+    import random
+
+    temperature = random.randint(65, 102)
+    humidity = random.randint(1, 100) / 100
+
+    payload = {'temperature': str(temperature), 'humidity': str(humidity)}
+
+    if len(sys.argv) > 1:
+        r = post_report("127.0.0.1", sys.argv[1], payload, port=5000)
+    else:
+        r = post_report("127.0.0.1", "New Place", payload, port=5000)
+
     print(r)
     print(r.text)
 
