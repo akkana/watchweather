@@ -10,3 +10,8 @@ This is not limited to weather data: you could use the framework for
 any quantities you want to report. It would be better to have a
 more general name, and if I think of a good name I'll rename the
 repository.
+
+This is in an early stage of development. To test it:
+
+export FLASK_APP=server/indexpage.py
+flask run

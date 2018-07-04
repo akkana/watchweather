@@ -1,0 +1,34 @@
+body { background: #eff; }
+
+fieldset {
+  background: #efe;
+  background-repeat: repeat;
+  border: 2px inset;
+  margin-top: 0;
+  padding: .5em;
+  -moz-border-radius:8px;
+  -webkit-border-radius:8px;
+  border-radius:8px;
+}
+
+fieldset > legend {
+  font-weight: bold;
+}
+
+.stationbox {
+  display: inline-block;
+  vertical-align: top;
+  margin: 0 5px 12px 5px;
+  border: 2px solid #bbb;
+  padding: 0;
+}
+
+table.datatable td {
+  padding: 2px 1em ;
+  text-align: center;
+}
+
+.bigdata {
+  font-size: 2.5em;
+}
+
