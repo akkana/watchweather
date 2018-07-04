@@ -13,5 +13,5 @@ repository.
 
 This is in an early stage of development. To test it:
 
-export FLASK_APP=server/indexpage.py
+export FLASK_APP=server/watchserver.py
 flask run
