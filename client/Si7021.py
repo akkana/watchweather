@@ -17,7 +17,7 @@ class Si7021:
     READ_HUM_NOHOLD = b"\xF5"
     SOFT_RESET = b"\xFE"
 
-    def __init__(self, bus):
+    def __init__(self, bus=1):
         # Open the I2C bus:
         self.fread  = io.open("/dev/i2c-%d" % bus, "rb", buffering=0)
         self.fwrite = io.open("/dev/i2c-%d" % bus, "wb", buffering=0)
@@ -64,6 +64,9 @@ class Si7021:
 
         return ((buf[0] << 8 | buf [1]) & 0xFFFC) * 175.72 / 65536.0 - 46.85
 
+    def read_temperature_f(self):
+        return self.read_temperature_c() * 1.8 + 32.
+
     def read_humidity(self):
         buf = self.readI2C(self.READ_HUM_NOHOLD)
         if not buf:
@@ -94,6 +97,11 @@ class Si7021:
             return True
         else:
             return False
+
+    def measurements_available(self):
+        return { "temperature" : self.read_temperature_f,
+                 "humidity"    : self.read_humidity
+               }
 
 if __name__ == '__main__':
     sensor = Si7021(1)

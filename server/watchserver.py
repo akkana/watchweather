@@ -14,6 +14,8 @@ stations.initialize()
 
 @app.route('/')
 def show_stations():
+    '''Display a page showing all currently reporting stations.
+    '''
     return '''
 <!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
 <html>
@@ -35,20 +37,13 @@ def show_stations():
 </body>
 </html>''' % stations.stations_as_html()
 
-@app.route('/post/<int:post_id>')
-def show_post(post_id):
-    # show the post with the given id, the id is an integer
-    return 'Post %d' % post_id
-
-@app.route('/report1/<stationname>')
-def report1(stationname):
-    return "Report from %s" % stationname
-
 @app.route('/report/<stationname>', methods=['POST', 'GET'])
 def report(stationname):
+    '''Accept a report over http from one station.
+    '''
     if request.method == 'POST':
-        print("Got a report:", request, request.form)
-        print("Keys:", ', '.join(list(request.form.keys())))
+        print("Got a report from %s including:" % stationname,
+              ', '.join(list(request.form.keys())))
 
         # request.form is type ImmutableMultiDict, which isn't too useful:
         # first, it's immutable, and second, indexed items seem to be
@@ -60,22 +55,14 @@ def report(stationname):
         # If it doesn't have a last-updated time, add one:
         vals['time'] = datetime.datetime.now()
 
-        stations.add_station(stationname, vals)
+        stations.update_station(stationname, vals)
 
         retstr = ''
         for key in request.form:
             retstr += '%s: %s\n' % (key, request.form[key])
-        print("Returning:'''%s'''" % retstr)
         return retstr
-
-    #     if valid_login(request.form['username'],
-    #                    request.form['password']):
-    #         return log_the_user_in(request.form['username'])
-    #     else:
-    #         error = 'Invalid username/password'
 
     # the code below is executed if the request method
     # was GET or the credentials were invalid
-    # return render_template('login.html', error=error)
     return "Error: request.method was %s" % request.method
 

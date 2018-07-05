@@ -32,30 +32,36 @@ though this is deceptive since debug *mode* is already on.
 
 You can view the station page in a browser:
 ```
+http://localhost:5000/
 http://127.0.0.1:5000/
 ```
 
-Then add some stations:
+Then add some stations using 'test' as the sensor name:
 ```
-client/stationreport.py Nearby
-client/stationreport.py 'Far away'
+client/stationreport.py Nearby localhost test
+client/stationreport.py 'Far away' localhost test
 ```
 
-Or if you have stations with sensors, you can run them like this:
+Or if you have stations with sensors, you can post real periodic reports,
+like this:
+
 ```
 while true; do
-  client/stationreport.py Bedroom hesiodus Si7021
+  client/stationreport.py Location servername Si7021
   sleep 30
 done
 ```
 
 (Eventually the client will do its own looping.)
 
+There are modules for a few common temperature sensor chips in the
+clients directory. For writing your own, see the README.md in that directory.
+
 You can modify client/stationreport to gather real temperature
 data, or whatever other data you want.
 
-If you want to view the page in Firefox, you may have to go to
-about:config, search for *refresh* and if *accessibility.blockautorefresh*
-is true, double-click on that line to change it to false.
-Supposedly the default is false but something is changing it to true
-for a lot of people.
+If you want to view the page in Firefox and have it auto-refresh,
+you may have to go to about:config, search for *refresh* and if
+*accessibility.blockautorefresh* is true, double-click on that line to
+change it to false. Supposedly the default is false but something is
+changing it to true for a lot of people.

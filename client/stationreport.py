@@ -1,9 +1,11 @@
 #!/usr/bin/env python3
 
-# Requires python3-requests
+# Make reports from a distributed station with one or more sensors,
+# such as temperature and humidity sensors.
+# Requires the requests module.
 
 import requests
-import sys
+import sys, os
 
 def post_report(server, stationname, payload, port=None):
     if port:
@@ -30,43 +32,44 @@ def randomreport():
     print(r)
     print(r.text)
 
+def Usage():
+    print('''Usage: %s stationname servername sensor
+
+For debugging, use "test" for the sensorname''' % os.path.basename(sys.argv[0]))
+    sys.exit(1)
+
 if __name__ == '__main__':
     # Usage: stationport.py stationname servername sensor
     # If there are less than three arguments, make a random report instead
     # (for testing).
 
+    print("sys.argv:", sys.argv)
     if len(sys.argv) < 4:
-        randomreport()
-        sys.exit(0)
+        Usage()
 
     stationname = sys.argv[1]
     servername = sys.argv[2]
     sensorname = sys.argv[3]
 
-    if sensorname == 'Si7021':
-        import Si7021
-        sensor = Si7021.Si7021(1)
-        ctemp = sensor.read_temperature_c()
-        ftemp = ctemp * 1.8 + 32
-        humidity = sensor.read_humidity()
-        payload = { 'temperature': "%.1f" % ftemp,
-                    'humidity':    "%.1f" % humidity
+    if sensorname == 'test':
+        import random
+        payload = { 'temperature' : random.randint(65, 102),
+                    'humidity'    : random.randint(1, 100) / 100
                   }
-        sensor.close()
-
-        r = post_report(servername, stationname, payload, port=5000)
-
-    elif sensorname == 'HTU21D':
-        import HTU21D
-        sensor = HTU21D.HTU21D()
-        ctemp = sensor.read_tmperature()
-        ftemp = ctemp * 1.8 + 32
-        humidity = sensor.read_humidity()
-        payload = { 'temperature': "%.1f" % ftemp,
-                    'humidity':    "%.1f" % humidity
-                  }
-
-        r = post_report(servername, stationname, payload, port=5000)
 
     else:
-        print("Unknown sensor", sensorname)
+        # Import the named module:
+        sensormodule = __import__(sensorname)
+        # call the initialization function of the same name as the module:
+        sensor = getattr(sensormodule, sensorname)()
+        measurements = sensor.measurements_available()
+        payload = {}
+        for m in measurements:
+            val = measurements[m]()
+            payload[m] = val
+        sensor.close()
+
+    try:
+        r = post_report(servername, stationname, payload, port=5000)
+    except:
+        print("Couldn't post report. Is %s up?" % servername)
