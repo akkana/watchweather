@@ -13,18 +13,39 @@ repository.
 
 This is in an early stage of development. To test it, first run the server:
 
+```
 export FLASK_APP=server/watchserver.py
 flask run
+```
 
-For debug mode, first do:
+If you want to disable debug mode so you can access the server
+from another machine:
+```
+flask run --host=0.0.0.0
+```
+
+For more debugging messages, try
+```
 export FLASK_DEBUG=1
+```
+though this is deceptive since debug *mode* is already on.
 
 You can view the station page in a browser:
+```
 http://127.0.0.1:5000/
+```
 
 Then add some stations:
+```
 client/stationreport.py Nearby
 client/stationreport.py 'Far away'
+```
 
 You can modify client/stationreport to gather real temperature
 data, or whatever other data you want.
+
+If you want to view the page in Firefox, you may have to go to
+about:config, search for *refresh* and if *accessibility.blockautorefresh*
+is true, double-click on that line to change it to false.
+Supposedly the default is false but something is changing it to true
+for a lot of people.

@@ -57,6 +57,7 @@ def show_stations():
 <head>
 <title>Stations Reporting</title>
 <link rel="stylesheet" type="text/css" href="/wrap.css" />
+<!-- <meta http-equiv="refresh" content="10"> -->
 </head>
 
 <body>
@@ -90,15 +91,10 @@ def report(stationname):
         # Turn it into a normal dictionary like we use in stations.py:
         vals = request.form.to_dict()
 
-        # Make sure we have a station name:
-        if 'name' not in vals:
-            print("Adding name", stationname)
-            vals['name'] = stationname
-
         # If it doesn't have a last-updated time, add one:
         vals['time'] = datetime.datetime.now()
 
-        stations.add_station(vals)
+        stations.add_station(stationname, vals)
 
         retstr = ''
         for key in request.form:

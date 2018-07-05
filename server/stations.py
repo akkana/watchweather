@@ -2,36 +2,43 @@
 
 import datetime
 
-# A list of dictionaries with various quantities we can report,
-# which must include "name" and should include 'time' (datetime of last update).
-# For example, station[0] might be { 'name': office, 'temperature': 73 }
-# Values may be numbers or strings.
-stations = []
+# A dictionary of dictionaries with various quantities we can report.
+# The key in stations is station name.
+# Dicts should include 'time' (datetime of last update).
+# For example, station['office'] -> { 'temperature': 73, 'time': <datetime> }
+# Values may be numbers or strings, but will normally be strings
+# because that's what's sent in web requests.
+stations = {}
 
 def initialize():
-    populate_bogostations()
+    populate_bogostations(1)
 
-def populate_bogostations():
-    stations.append({ 'name': 'office',     'temperature': 73, 'humidity': 10 })
-    stations.append({ 'name': 'patio',      'temperature': 73, 'humidity': 6 })
-    stations.append({ 'name': 'bedroom',    'temperature': 73, 'humidity': 9 })
-    stations.append({ 'name': 'guest room', 'temperature': 73, 'humidity': 12 })
-    stations.append({ 'name': 'garden',     'temperature': 73, 'humidity': 4 })
-    stations.append({ 'name': 'kitchen',    'temperature': 73, 'humidity': 7 })
-    for st in stations:
-        st['time'] = datetime.datetime.now()
+def populate_bogostations(nstations):
+    '''Create a specified number of  bogus stations to test the web server.
+       If you want to test layout, you probably want to create at least 5.
+    '''
+    import random
 
-def add_station(station_data):
-    stations.append(station_data)
-    print("stations now:")
-    for st in stations:
-        print(st)
+    stationnames = [ 'office', 'patio', 'garden', 'garage', 'kitchen',
+                     'bedroom', 'roof', 'living room', 'Death Valley',
+                     'Antarctica' ]
+    nstations = min(nstations, len(stationnames))
+    for st in stationnames[:nstations]:
+        stations[st] = { 'temperature': "%.1f" % (random.randint(65, 102)),
+                         'humidity':    "%.1f" % (random.randint(1, 100) / 100),
+                         'time' :       datetime.datetime.now()
+                       }
+
+def add_station(station_name, station_data):
+    stations[station_name] = station_data
+    # print("stations now:")
+    # for st in stations:
+    #     print(st)
 
 def stations_as_html():
     outstr = ''
-    for st in stations:
-        if 'name' not in st:
-            continue
+    for stname in stations:
+        st = stations[stname]
 
         outstr += '''
 <fieldset class="stationbox">
@@ -40,15 +47,16 @@ def stations_as_html():
 
 <table class="datatable">
 <tr>
-''' % (st['name'])
+''' % (stname)
+
         for key in st:
-            if key == 'name' or key == 'time':
+            if key == 'time':
                 continue
             outstr += '  <td>%s\n' % key
         outstr += '<tr class="bigdata">'
 
         for key in st:
-            if key == 'name' or key == 'time':
+            if key == 'time':
                 continue
             outstr += '  <td>%s\n' % str(st[key])
 
