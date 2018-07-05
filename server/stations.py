@@ -4,6 +4,8 @@
 # measured quantities such as temperature and humidity.
 
 import datetime
+import os
+import json
 
 # A dictionary of dictionaries with various quantities we can report.
 # The key in stations is station name.
@@ -15,6 +17,15 @@ stations = {}
 
 # How long to keep stations if they stop reporting:
 expire_after = datetime.timedelta(minutes=15)
+
+# If the environment variable WEATHER_DATA_DIR is set,
+# data will be saved to JSONL files in that directory.
+# Why not CSV? Because a station might report completely different
+# quantities each time: there's no way to predict what columns
+# would eventually be needed in a CSV file.
+savedir = os.getenv("WEATHER_DATA_DIR")
+if savedir and not os.path.exists(savedir):
+    os.mkdir(savedir)
 
 def initialize(expiration=None):
     '''Initialize the station list.
@@ -43,6 +54,14 @@ def populate_bogostations(nstations):
                          'time' :       datetime.datetime.now()
                        }
 
+# The idiot python json module can't handle datetimes,
+# so those have to be treated specially:
+def json_serial(obj):
+    """JSON serializer for objects not serializable by default json code"""
+    if isinstance(obj, (datetime.datetime, datetime.date)):
+        return obj.isoformat()
+    raise TypeError ("Type %s not serializable" % type(obj))
+
 def update_station(station_name, station_data):
     '''Update a station, adding it if it's new.
        station_data is a dictionary.
@@ -52,6 +71,12 @@ def update_station(station_name, station_data):
     # print("stations now:")
     # for st in stations:
     #     print(st)
+
+    if savedir:
+        datafilename = os.path.join(savedir, station_name) + ".jsonl"
+        with open(datafilename, "a") as datafile:
+            datafile.write(json.dumps(station_data, default=json_serial))
+            datafile.write('\n')
 
     prune_stations()
 
