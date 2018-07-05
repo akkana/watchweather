@@ -56,5 +56,17 @@ if __name__ == '__main__':
 
         r = post_report(servername, stationname, payload, port=5000)
 
+    elif sensorname == 'HTU21D':
+        import HTU21D
+        sensor = HTU21D.HTU21D()
+        ctemp = sensor.read_tmperature()
+        ftemp = ctemp * 1.8 + 32
+        humidity = sensor.read_humidity()
+        payload = { 'temperature': "%.1f" % ftemp,
+                    'humidity':    "%.1f" % humidity
+                  }
+
+        r = post_report(servername, stationname, payload, port=5000)
+
     else:
         print("Unknown sensor", sensorname)

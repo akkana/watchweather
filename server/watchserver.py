@@ -12,52 +12,18 @@ app = Flask(__name__, static_url_path='')
 
 stations.initialize()
 
-def stations_as_html():
-    outstr = ''
-    for st in stations:
-        if 'name' not in st:
-            continue
-
-        outstr += '''
-<fieldset class="stationbox">
-
-<legend>%s</legend>
-
-<table class="datatable">
-<tr>
-''' % (st['name'])
-        for key in st:
-            if key == 'name' or key == 'time':
-                continue
-            outstr += '  <td>%s\n' % key
-        outstr += '<tr class="bigdata">'
-
-        for key in st:
-            if key == 'name' or key == 'time':
-                continue
-            outstr += '  <td>%s\n' % st[key]
-
-        if 'time' in st:
-            outstr += '<tr><td colspan=10>'
-            if hasattr(st['time'], 'strftime'):
-                outstr += "Last updated: " + st['time'].strftime('%H:%M')
-            else:
-                outstr += "Last updated: " + st['time']
-
-        outstr += '</table>\n'
-        outstr += '\n</fieldset>\n'
-
-    return outstr
-
 @app.route('/')
 def show_stations():
     return '''
 <!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
 <html>
 <head>
+<meta http-equiv="content-type" content="text/html; charset=utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta http-equiv="refresh" content="30">
+
 <title>Stations Reporting</title>
 <link rel="stylesheet" type="text/css" href="/wrap.css" />
-<!-- <meta http-equiv="refresh" content="10"> -->
 </head>
 
 <body>

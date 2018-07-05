@@ -41,6 +41,16 @@ client/stationreport.py Nearby
 client/stationreport.py 'Far away'
 ```
 
+Or if you have stations with sensors, you can run them like this:
+```
+while true; do
+  client/stationreport.py Bedroom hesiodus Si7021
+  sleep 30
+done
+```
+
+(Eventually the client will do its own looping.)
+
 You can modify client/stationreport to gather real temperature
 data, or whatever other data you want.
 

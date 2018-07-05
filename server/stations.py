@@ -11,7 +11,7 @@ import datetime
 stations = {}
 
 def initialize():
-    populate_bogostations(1)
+    populate_bogostations(0)
 
 def populate_bogostations(nstations):
     '''Create a specified number of  bogus stations to test the web server.
@@ -49,13 +49,20 @@ def stations_as_html():
 <tr>
 ''' % (stname)
 
-        for key in st:
+        keys = list(st.keys())
+
+        # Keep the keys always in the same order.
+        # Generally we want temperature first, so as a TEMPORARY measure,
+        # use reverse sort. XXX Be smarter about order.
+        keys.sort(reverse=True)
+
+        for key in keys:
             if key == 'time':
                 continue
             outstr += '  <td>%s\n' % key
         outstr += '<tr class="bigdata">'
 
-        for key in st:
+        for key in keys:
             if key == 'time':
                 continue
             outstr += '  <td>%s\n' % str(st[key])
