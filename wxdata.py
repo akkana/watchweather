@@ -33,22 +33,36 @@ def plot_jsonl_data(datafile):
                 else:
                     datasets[key] = [ [ report_time ], [ float(report[key]) ] ]
 
-    fig, ax = plt.subplots()
-    key = 'temperature'
-    ax.plot(datasets[key][0], datasets[key][1])
+    # Figure out layout. If 2 or fewer quantities, lay out vertically;
+    # otherwise use 2 columns.
+    nplots = len(datasets)
+    if nplots <= 2:
+        nrows = nplots
+        ncols = 1
+    else:
+        ncols = 2
+        nrows = int(len(datasets) / 2 + .5)    # divide by 2 and round up
 
-    # Trim excessive whitespace
-    plt.tight_layout(pad=2.0, w_pad=10.0, h_pad=3.0)
-
+    # Simple time formatter
     xformatter = mdates.DateFormatter('%H:%M')
-    # xlocator = mdates.MinuteLocator(interval = 15)
+    # Set xtick labels every 15 minutes
     xlocator = mdates.MinuteLocator(byminute=[0,30], interval = 1)
 
-    # Set xtick labels to appear every 15 minutes
-    ax.xaxis.set_major_locator(xlocator)
+    # fig, ax = plt.subplots()
+    fig = plt.figure()
+    for i, key in enumerate(datasets):
+        # row = i // 2
+        # col = i % 2
+        ax = fig.add_subplot(nrows, ncols, i+1)
+        ax.plot(datasets[key][0], datasets[key][1])
 
-    # Format xtick labels as HH:MM
-    ax.xaxis.set_major_formatter(xformatter)
+        ax.xaxis.set_major_locator(xlocator)
+        ax.xaxis.set_major_formatter(xformatter)
+
+        plt.ylabel(key)
+
+    # Trim excessive whitespace
+    plt.tight_layout(pad=.5, w_pad=.5, h_pad=.5)
 
     # Exit on key q
     plt.figure(1).canvas.mpl_connect('key_press_event',
