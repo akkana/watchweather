@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
 
-from flask import Flask, request, url_for
-
 import datetime
+
+from flask import Flask, request, url_for
 
 # The code to keep track of our reporting stations:
 import stations
@@ -12,30 +12,92 @@ app = Flask(__name__, static_url_path='')
 
 stations.initialize()
 
-@app.route('/')
-def show_stations():
-    '''Display a page showing all currently reporting stations.
+def HTML_header(title, refresh=0, stylesheets=None):
+    '''Boilerplate HTML headers. I know flask is supposed to have
+       templating but I haven't figured it out yet.
     '''
-    return '''
-<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+
+    if not stylesheets:
+        stylesheets = ["/basic.css"]
+
+    html = '''<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
 <html>
 <head>
 <meta http-equiv="content-type" content="text/html; charset=utf-8" />
-<meta name="viewport" content="width=device-width, initial-scale=1">
-<meta http-equiv="refresh" content="30">
+<meta name="viewport" content="width=device-width, initial-scale=1">'''
+    if refresh:
+        html += '<meta http-equiv="refresh" content="%d">' % refresh
+    html += '''
+<title>%s</title>
+''' % (title)
+    for sheet in stylesheets:
+        html += '<link rel="stylesheet" type="text/css" href="%s" />\n' % sheet
 
-<title>Stations Reporting</title>
-<link rel="stylesheet" type="text/css" href="/wrap.css" />
+    html += '''
 </head>
 
 <body>
 
-<h1>Stations Reporting</h1>
+<h1>%s</h1>''' % (title)
 
-%s
+    return html
 
+def HTML_footer():
+    return '''
+<hr>
+<a href="/">Watchweather Server home page</a>
 </body>
-</html>''' % stations.stations_as_html()
+</html>
+'''
+
+@app.route('/')
+def home_page():
+    html = HTML_header("Watch Weather")
+
+    html += '''<p>\n<a href="/stations">Summary of all Stations</a>
+<p>
+<a href="/details/all">Detailed View of all Stations</a>
+
+<h3>Individual Stations:</h3>
+<ul>'''
+
+    for stname in stations.stations:
+        html += '<li><a href="/details/%s">%s Details</a>' % (stname, stname)
+
+    html += '</ul>'
+
+    html += HTML_footer()
+    return html
+
+@app.route('/stations')
+def show_stations():
+    '''Display a page showing all currently reporting stations.
+    '''
+    html_out = HTML_header("Stations Reporting", refresh=30,
+                           stylesheets=["basic.css", "wrap.css"])
+    html_out += stations.stations_as_html()
+    html_out += HTML_footer()
+    return html_out
+
+@app.route('/details/<stationname>')
+def details(stationname):
+    '''Show details ina  big table for a specific station, or all'''
+
+    try:
+        details = stations.station_details(stationname)
+    except KeyError:
+        details = "No station named %s" % stationname
+
+    if stationname == "all":
+        title = "All Stations"
+    else:
+        title = stationname
+
+    html_out = HTML_header(title)
+    html_out += details
+    html_out += HTML_footer()
+
+    return html_out
 
 @app.route('/report/<stationname>', methods=['POST', 'GET'])
 def report(stationname):

@@ -15,8 +15,12 @@ import json
 # because that's what's sent in web requests.
 stations = {}
 
+# The order in which to show fields.
+# Read from ~/.config/watchweather/fields.
+field_order = None
+
 # How long to keep stations if they stop reporting:
-expire_after = datetime.timedelta(minutes=15)
+expire_after = datetime.timedelta(minutes=5)
 
 # If the environment variable WEATHER_DATA_DIR is set,
 # data will be saved to JSONL files in that directory.
@@ -68,9 +72,6 @@ def update_station(station_name, station_data):
        Also prune the list of stations.
     '''
     stations[station_name] = station_data
-    # print("stations now:")
-    # for st in stations:
-    #     print(st)
 
     if savedir:
         datafilename = os.path.join(savedir, station_name) + ".jsonl"
@@ -84,13 +85,57 @@ def prune_stations():
     '''Remove any station that hasn't reported in a while.
     '''
     now = datetime.datetime.now()
+    deleted_stations = []
     for stname in stations:
         try:
-            if stations[stname]['time'] - now > expire_after:
-                del stations[stname]
+            if now - stations[stname]['time'] > expire_after:
+                deleted_stations.append(stname)
         except KeyError:
             print("No 'time' in station", stname)
             pass
+
+    for d in deleted_stations:
+        del stations[d]
+
+def station_details(stationname):
+    '''Show details for just one station'''
+    if not field_order:
+        # XXX temporarily hardwired
+        read_field_order_file(os.path.expanduser("~/.config/watchweather/fields"))
+
+    html_out = '<table>'
+    extra_fields = ''
+    # st = stations[stationname]
+    if stationname == 'all':
+        nstations = len(stations)
+        showstations = stations
+        html_out += '<tr><td>'
+        for stname in showstations:
+            html_out += '<th>%s' % (stname)
+    else:
+        nstations = 1
+        showstations = { stationname: stations[stationname] }
+
+    # First collect the fields specified in field_order.
+    for field in field_order:
+        if not field:
+            html_out += '<tr><td colspan=%d>&nbsp;' % (nstations+1)
+            continue
+
+        html_out += '<tr>\n'
+        html_out += '<td>%s\n' % (field.replace('_', ' ').title())
+        for stname in showstations:
+            st = showstations[stname]
+
+            # Not all stations have all fields, so be prepared
+            # for a KeyError:
+            try:
+                html_out += '<td>%s' % st[field]
+            except KeyError:
+                html_out += '<td>&nbsp;'
+
+    html_out += '</table>'
+    return html_out
 
 def stations_as_html():
     '''Return an HTML string representing all the reporting stations.
@@ -148,6 +193,25 @@ def stations_as_html():
         outstr += '\n</fieldset>\n'
 
     return outstr
+
+def read_field_order_file(filename):
+    global field_order
+
+    try:
+        fp = open(filename)
+    except:
+        return
+
+    if not field_order:
+        field_order = []
+
+    for line in fp:
+        line = line.strip()
+        if line.startswith('#'):
+            continue
+        field_order.append(line)
+
+    fp.close()
 
 if __name__ == '__main__':
     initialize()

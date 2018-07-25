@@ -33,6 +33,11 @@ class Si7021:
         self.fread.close()
         self.fwrite.close()
 
+    def read_all(self):
+        return { "temperature" : self.read_temperature_f(),
+                 "humidity"    : self.read_humidity()
+               }
+
     def readI2C(self, cmd):
         # These give errors:
         # data = self.bus.read_i2c_block_data(self.address, cmd)

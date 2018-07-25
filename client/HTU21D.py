@@ -70,6 +70,11 @@ class HTU21D(object):
         else:
             return False
 
+    def read_all(self):
+        return { "temperature" : self.read_temperature_f(),
+                 "humidity"    : self.read_humidity()
+               }
+
     def read_temperature_c(self):
         self.dev.write(CMD_READ_TEMP_NOHOLD)  # measure temperature
         time.sleep(.1)
