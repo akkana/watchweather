@@ -1,5 +1,9 @@
 # watchweather
 
+XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX
+XXX say something about the required config files!
+XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX
+
 Display the output of multiple temperature stations on one page.
 
 For instance, you can set up several Raspberry Pis around the house,
@@ -61,13 +65,20 @@ If your sensors are reporting correctly, you can make reports in a loop,
 like this:
 
 ```
+nohup client/stationreport.py -l Observer moon Si7021 &
+```
+
+or while debugging, you can do a simpler test, like:
+
+```
 while true; do
   client/stationreport.py Location servername Si7021
   sleep 30
 done
 ```
 
-(Eventually the client will do its own looping.)
+You can also use -p port, if you need a port other than 5000,
+and -v for verbose if you want to keep track of your reports.
 
 For writing your own sensor, see the client/README.md.
 
@@ -75,11 +86,12 @@ For writing your own sensor, see the client/README.md.
 
 ### Base page
 
+The base page gives a simple list of options:
+
 ```
 [http://localhost:5000/](http://localhost:5000/)
 ```
 
-This gives a very minimalist menu of options.
 
 ### /stations
 
