@@ -66,11 +66,46 @@ def json_serial(obj):
         return obj.isoformat()
     raise TypeError ("Type %s not serializable" % type(obj))
 
+def parse(val):
+    '''Take a value, which might be a str, float, datetime or int,
+       and parse it if it's a float or datetime since those will
+       need reformatting.
+    '''
+    if type(val) is not str:
+        return val
+    try:
+        return int(val)
+    except:
+        pass
+    try:
+        return float(val)
+    except:
+        pass
+    try:
+        return datetime.datetime.strptime(val, '%Y-%m-%d %H:%M:%S')
+    except:
+        pass
+    try:
+        return datetime.datetime.strptime(val, '%Y-%m-%d %H:%M:%S.%f')
+    except:
+        pass
+    try:
+        return datetime.datetime.strptime(val, '%Y-%m-%d %H:%M')
+    except:
+        pass
+    return val
+
 def update_station(station_name, station_data):
     '''Update a station, adding it if it's new.
        station_data is a dictionary.
        Also prune the list of stations.
     '''
+    # station_data is all strings since it came in through JSON.
+    # Parse it to something more useful.
+    for key in station_data:
+        if type(station_data[key]) is str:
+            station_data[key] = parse(station_data[key])
+
     stations[station_name] = station_data
 
     if savedir:
@@ -97,26 +132,90 @@ def prune_stations():
     for d in deleted_stations:
         del stations[d]
 
+def stations_summary():
+    '''Return an HTML string representing all the reporting stations.
+       Only show temperature, humidity and rain_daily.
+       XXX Eventually make this configurable.
+    '''
+    outstr = ''
+    showkeys = [ 'temperature', 'humidity', 'rain_daily' ]
+
+    for stname in stations:
+        st = stations[stname]
+
+        outstr += '''
+<fieldset class="stationbox">
+
+<legend>%s</legend>
+
+<table class="datatable">
+<tr>
+''' % (stname)
+
+        # keys = list(st.keys())
+
+        # Keep the keys always in the same order.
+        # Generally we want temperature first, so as a TEMPORARY measure,
+        # use reverse sort. XXX Be smarter about order.
+        # keys.sort(reverse=True)
+
+        for key in showkeys:
+            if key in st:
+                outstr += '  <td>%s\n' % key
+
+        outstr += '<tr class="bigdata">'
+
+        for key in showkeys:
+            if key in st:
+                # val = parse(st[key])
+                val = st[key]
+
+                if key.startswith('rain') and not val:
+                    continue
+
+                # Format floats to one decimal place.
+                if type(val) is float:
+                    strval = '%.1f' % val
+                else:
+                    strval = str(val)
+
+                # However, if it's a floating point, chances are it has
+                # way too many decimal places. To avoid depending on all
+                # modules to do that properly, guard against it here.
+                outstr += '  <td>%s\n' % strval
+
+        if 'time' in st:
+            # Time will also likely need reformatting.
+            # d = parse(st['time'])
+            d = st['time']
+            outstr += '<tr><td colspan=10>Last updated: %s' \
+                                        % d.strftime('%H:%M')
+
+        outstr += '</table>\n'
+        outstr += '\n</fieldset>\n'
+
+    return outstr
+
 def station_details(stationname):
     '''Show details for just one station'''
     if not field_order:
         # XXX temporarily hardwired
         read_field_order_file(os.path.expanduser("~/.config/watchweather/fields"))
 
-    html_out = '<table>'
+    html_out = '<table class="details">'
     extra_fields = ''
     # st = stations[stationname]
     if stationname == 'all':
         nstations = len(stations)
         showstations = stations
-        html_out += '<tr><td>'
+        html_out += '<tr><td class="station_name">'
         for stname in showstations:
-            html_out += '<th>%s' % (stname)
+            html_out += '<th class="val">%s' % (stname)
     else:
         nstations = 1
         showstations = { stationname: stations[stationname] }
 
-    # First collect the fields specified in field_order.
+    # Collect the fields specified in field_order.
     for field in field_order:
         if not field:
             html_out += '<tr><td colspan=%d>&nbsp;' % (nstations+1)
@@ -130,69 +229,22 @@ def station_details(stationname):
             # Not all stations have all fields, so be prepared
             # for a KeyError:
             try:
-                html_out += '<td>%s' % st[field]
+                # Time should normally be datetime.datetime.
+                # Rewrite time to get rid of decimal seconds
+                # that would appear if we just did a string conversion:
+                if field == 'time' and hasattr(st[field], 'strftime'):
+                    valstr = st[field].strftime("%Y-%m-%d %H:%M:%S")
+                elif type(st[field]) is float:
+                    valstr = '%.1f' % st[field]
+                else:
+                    valstr = str(st[field])
+
+                html_out += '<td class="val">%s' % valstr
             except KeyError:
-                html_out += '<td>&nbsp;'
+                html_out += '<td class="val">&nbsp;'
 
     html_out += '</table>'
     return html_out
-
-def stations_as_html():
-    '''Return an HTML string representing all the reporting stations.
-    '''
-    outstr = ''
-    for stname in stations:
-        st = stations[stname]
-
-        outstr += '''
-<fieldset class="stationbox">
-
-<legend>%s</legend>
-
-<table class="datatable">
-<tr>
-''' % (stname)
-
-        keys = list(st.keys())
-
-        # Keep the keys always in the same order.
-        # Generally we want temperature first, so as a TEMPORARY measure,
-        # use reverse sort. XXX Be smarter about order.
-        keys.sort(reverse=True)
-
-        for key in keys:
-            if key == 'time':
-                continue
-            outstr += '  <td>%s\n' % key
-        outstr += '<tr class="bigdata">'
-
-        for key in keys:
-            if key == 'time':
-                continue
-
-            # The value got here through http and is already a string.
-            # However, if it's a floating point, chances are it has
-            # way too many decimal places. To avoid depending on all
-            # modules to do that properly, guard against it here.
-            try:
-                f = float(st[key])
-                st[key] = '%.1f' % f
-            except:
-                pass
-
-            outstr += '  <td>%s\n' % st[key]
-
-        if 'time' in st:
-            outstr += '<tr><td colspan=10>'
-            if hasattr(st['time'], 'strftime'):
-                outstr += "Last updated: " + st['time'].strftime('%H:%M')
-            else:
-                outstr += "Last updated: " + st['time']
-
-        outstr += '</table>\n'
-        outstr += '\n</fieldset>\n'
-
-    return outstr
 
 def read_field_order_file(filename):
     global field_order

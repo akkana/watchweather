@@ -75,7 +75,7 @@ def show_stations():
     '''
     html_out = HTML_header("Stations Reporting", refresh=30,
                            stylesheets=["basic.css", "wrap.css"])
-    html_out += stations.stations_as_html()
+    html_out += stations.stations_summary()
     html_out += HTML_footer()
     return html_out
 
