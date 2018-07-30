@@ -173,9 +173,13 @@ def stations_summary():
                 if key.startswith('rain') and not val:
                     continue
 
-                # Format floats to one decimal place.
+                # Format floats to one decimal place,
+                # except for rain which gets two.
                 if type(val) is float:
-                    strval = '%.1f' % val
+                    if key.startswith('rain'):
+                        strval = '%.2f' % val
+                    else:
+                        strval = '%.1f' % val
                 else:
                     strval = str(val)
 
