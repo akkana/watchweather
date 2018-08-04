@@ -50,7 +50,7 @@ class observerscraper:
         except:
             return
 
-        print("Reading config from", configfile)
+        # print("Reading config from", configfile)
         for line in fp:
             line = line.strip()
             if line.startswith('#'):
@@ -87,7 +87,7 @@ class observerscraper:
         except:
             return
 
-        print("Reading fields from", fieldsfile)
+        # print("Reading fields from", fieldsfile)
         for line in fp:
             line = line.strip()
             if not line or line.startswith('#'):
@@ -101,6 +101,7 @@ class observerscraper:
         return
 
     def read_all(self):
+        print("Getting", self.config['observerurl'])
         r = requests.get(self.config['observerurl'])
 
         soup = BeautifulSoup(r.text, "lxml")

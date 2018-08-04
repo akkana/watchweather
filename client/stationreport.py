@@ -9,37 +9,57 @@ import argparse
 import time
 import sys, os
 
-def post_report(server, stationname, payload, port):
-    if port:
-        url = "http://%s:%d/report/%s" % (server, port, stationname)
-    else:
-        url = "http://%s/report/%s" % (server, stationname)
+sensor = None
+sensormodule = None
 
-    return requests.post(url, data=payload)
+def initialize(sensorname):
+    global sensormodule
+    global sensor
 
-def stationreport(servername, stationname, sensorname, port, verbose=False):
-    if sensorname == 'test':
-        import random
-        payload = { 'temperature' : random.randint(65, 102),
-                    'humidity'    : random.randint(1, 100) / 100
-                  }
+    sensormodule = sensorname
 
-    else:
-        # Import the named module:
-        sensormodule = __import__(sensorname)
-        # call the initialization function of the same name as the module:
-        sensor = getattr(sensormodule, sensorname)()
-        payload = sensor.read_all()
-        sensor.close()
 
+    # Import the named module:
+    sensormodule = __import__(sensorname)
+
+    # call the initialization function of the same name as the module:
+    sensor = getattr(sensormodule, sensorname)()
+
+def stationreport(servername, stationname, port=5000, verbose=False,
+                  test_client=None):
+    '''Make a report to the server:port reflecting a particular station,
+       based on what the sensor object is currently reporting.
+       verbose will print debugging messages;
+       test_client is used for automated testing since flask
+       doesn't run a real server during unit tests.
+    '''
     if verbose:
-        print("Trying a report for %s with sensor '%s' to %s:%d" % (stationname,
-                                                                    sensorname,
-                                                                    servername,
-                                                                    port))
+        if test_client:
+            print("Trying a test report for '%s' with sensor '%s'"
+                  % (stationname, sensormodule))
+        else:
+            print("Trying a report for '%s' with sensor '%s' to %s:%d"
+                  % (stationname, sensormodule, servername, port))
+
+    if not sensor:
+        print("Sensor wasn't initialized")
+        return
 
     try:
-        r = post_report(servername, stationname, payload, port)
+        payload = sensor.read_all()
+    except Exception as e:
+        print("Couldn't read sensor:", e)
+        return
+
+    if verbose:
+        print("Payload to send to the server:", payload)
+
+    # Ready to contact the server.
+    try:
+        if test_client:
+            r = test_client.post('/report/%s' % stationname, data=payload)
+        else:
+            r = post_report(servername, stationname, payload, port)
         if verbose:
             print("Posted report")
 
@@ -55,6 +75,14 @@ def stationreport(servername, stationname, sensorname, port, verbose=False):
 
     except requests.exceptions.ConnectionError:
         print("Couldn't post report. Is %s up?" % servername)
+
+def post_report(server, stationname, payload, port):
+    if port:
+        url = "http://%s:%d/report/%s" % (server, port, stationname)
+    else:
+        url = "http://%s/report/%s" % (server, stationname)
+
+    return requests.post(url, data=payload)
 
 if __name__ == '__main__':
     # Usage: stationport.py stationname servername sensor
@@ -87,16 +115,16 @@ if __name__ == '__main__':
 
     args = parser.parse_args(sys.argv[1:])
 
-    print("args:", args)
-
     if not args.port:
         args.port = 5000
 
     if args.verbose and args.loop:
         print("Looping with time %d" % args.loop)
 
+    initialize(args.sensor)
+
     while True:
-        stationreport(args.servername, args.stationname, args.sensor,
+        stationreport(args.servername, args.stationname,
                       port=args.port, verbose=args.verbose)
 
         if not args.loop:
