@@ -1,9 +1,5 @@
 # watchweather
 
-XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX
-XXX say something about the required config files!
-XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX
-
 Display the output of multiple temperature stations on one page.
 
 For instance, you can set up several Raspberry Pis around the house,
@@ -17,7 +13,17 @@ repository.
 
 ## Running the Server
 
-This is in an early stage of development. To test it, first run the server:
+This is in an early stage of development. To test it, first create the
+needed configuration files:
+
+mkdir ~/.config/watchweather/
+cat >~/.config/watchweather/fields <<EOF
+temperature
+humidity
+rain
+EOF
+
+Then run the server:
 
 ```
 export FLASK_APP=server/watchserver.py
@@ -57,8 +63,8 @@ client/stationreport.py "Sensor Location" servername Si7021
 If you don't have any sensors yet and just want to test the server,
 you can add some stations using 'test' as the sensor name:
 ```
-client/stationreport.py Nearby localhost test
-client/stationreport.py 'Far away' localhost test
+client/stationreport.py Nearby localhost testclient
+client/stationreport.py 'Far away' localhost testclient
 ```
 
 If your sensors are reporting correctly, you can make reports in a loop,

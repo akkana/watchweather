@@ -160,7 +160,7 @@ def stations_summary():
         # keys.sort(reverse=True)
 
         for key in showkeys:
-            if key in st:
+            if key in st and st[key]:
                 outstr += '  <td>%s\n' % key
 
         outstr += '<tr class="bigdata">'
@@ -170,13 +170,13 @@ def stations_summary():
                 # val = parse(st[key])
                 val = st[key]
 
-                if key.startswith('rain') and not val:
+                if not val:
                     continue
 
                 # Format floats to one decimal place,
                 # except for rain which gets two.
                 if type(val) is float:
-                    if key.startswith('rain'):
+                    if key == 'rain_daily':
                         strval = '%.2f' % val
                     else:
                         strval = '%.1f' % val
@@ -204,7 +204,13 @@ def station_details(stationname):
     '''Show details for just one station'''
     if not field_order:
         # XXX temporarily hardwired
-        read_field_order_file(os.path.expanduser("~/.config/watchweather/fields"))
+        configfile = os.path.expanduser("~/.config/watchweather/fields")
+        print("Trying to read fields from", configfile)
+        read_field_order_file(configfile)
+
+    # if not field_order:
+    #     return "<p><b>Missing field_order file</b>"
+    fields = field_order
 
     html_out = '<table class="details">'
     extra_fields = ''
@@ -219,8 +225,17 @@ def station_details(stationname):
         nstations = 1
         showstations = { stationname: stations[stationname] }
 
+    # If there was no fields file, just show all the fields we have,
+    # in undefined order
+    if not fields:
+        fields = []
+        for stname in showstations:
+            for f in showstations[stname]:
+                if f not in fields:
+                    fields.append(f)
+
     # Collect the fields specified in field_order.
-    for field in field_order:
+    for field in fields:
         if not field:
             html_out += '<tr><td colspan=%d>&nbsp;' % (nstations+1)
             continue
