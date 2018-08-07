@@ -254,7 +254,10 @@ def station_details(stationname):
                 if field == 'time' and hasattr(st[field], 'strftime'):
                     valstr = st[field].strftime("%Y-%m-%d %H:%M:%S")
                 elif type(st[field]) is float:
-                    valstr = '%.1f' % st[field]
+                    if field == 'rain_daily':
+                        valstr = '%.2f' % st[field]
+                    else:
+                        valstr = '%.1f' % st[field]
                 else:
                     valstr = str(st[field])
 
