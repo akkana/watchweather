@@ -56,22 +56,24 @@ def stationreport(servername, stationname, port=5000, verbose=False,
 
     # Ready to contact the server.
     try:
-        if test_client:
-            r = test_client.post('/report/%s' % stationname, data=payload)
-        else:
+        # Was there a payload from the initial read_all()?
+        if payload:
             r = post_report(servername, stationname, payload, port)
-        if verbose:
-            print("Posted report")
 
         # If a station has sub-stations, post separate reports for them.
         # For instance, the observerscraper can collect data from
         # an outdoor2 and an indoor1 sensor.
         if hasattr(sensor, 'substations') and sensor.substations:
-            for st in sensor.substations:
+            print("Substations:", sensor.substations)
+            start = 1 if payload else 0
+            for st in sensor.substations[start:]:
                 payload = sensor.read_substation(st)
                 post_report(servername, st, payload, port=port)
                 if verbose:
                     print("Posted substation report for %s" % st)
+
+        if verbose:
+            print("Posted report")
 
     except requests.exceptions.ConnectionError:
         print("Couldn't post report. Is %s up?" % servername)

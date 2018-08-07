@@ -1,7 +1,5 @@
 #!/usr/bin/env python3
 
-# XXX youtube Fran's Dangerous Toys
-
 # Test client for watchserver. Reports random temperature and humidity,
 # and sometimes rainfall.
 

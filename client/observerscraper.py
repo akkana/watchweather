@@ -31,7 +31,6 @@ class observerscraper:
     def __init__(self):
         self.config = {
             'observerurl' : None,
-            'wunderstation' : None,
         }
         self.fields = collections.OrderedDict()
         self.substations = {}
