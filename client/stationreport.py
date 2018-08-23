@@ -6,6 +6,7 @@
 
 import requests
 import argparse
+import datetime
 import time
 import sys, os
 
@@ -70,10 +71,8 @@ def stationreport(servername, stationname, port=5000, verbose=False,
                 payload = sensor.read_substation(st)
                 post_report(servername, st, payload, port=port)
                 if verbose:
-                    print("Posted substation report for %s" % st)
-
-        if verbose:
-            print("Posted report")
+                    print("%s: Posted substation report for %s"
+                          % (datetime.datetime.now(), st))
 
     except requests.exceptions.ConnectionError:
         print("Couldn't post report. Is %s up?" % servername)
@@ -131,6 +130,16 @@ if __name__ == '__main__':
 
         if not args.loop:
             sys.exit(0)
+
+        # If we're looping, we're probably also nohupped,
+        # which means stdout and stderr are going to nohup.out
+        # and are being artificially buffered. Fix that.
+        # There doesn't seem to be any way to get Python to take an
+        # already open file object and make it unbuffered or line buffered.
+        # Another alternative is always running as
+        # PYTHONUNBUFFERED=x nohup stationreport.py ...
+        sys.stdout.flush()
+        sys.stderr.flush()
 
         time.sleep(args.loop)
 
