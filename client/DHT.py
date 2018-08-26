@@ -24,7 +24,7 @@ import time
 
 MAXTRIES = 5
 
-class DHTsensor:
+class DHT:
 
     def __init__(self, sensortype=22, pin=4):
         '''Initialize with either a number (22, 11 or 2302)
@@ -59,7 +59,8 @@ class DHTsensor:
 
             time.sleep(2.1)
 
-        return { 'temperature' : temperature,
+        print("Read temperature", temperature, "->", temperature * 1.8 + 32.)
+        return { 'temperature' : temperature * 1.8 + 32.,
                  'humidity'    : humidity
         }
 
@@ -68,13 +69,12 @@ class DHTsensor:
 
 if __name__ == '__main__':
     import sys
-    print("len", len(sys.argv))
     if len(sys.argv) == 3:
-        sensor = DHTsensor(sensortype=sys.argv[1], pin=int(sys.argv[2]))
+        sensor = DHT(sensortype=sys.argv[1], pin=int(sys.argv[2]))
     elif len(sys.argv) == 2:
-        sensor = DHTsensor(sensortype=sys.argv[1])
+        sensor = DHT(sensortype=sys.argv[1])
     else:
-        sensor = DHTsensor()
+        sensor = DHT()
 
     print(sensor.read_all())
     sensor.close()
