@@ -7,6 +7,20 @@ import datetime
 import os
 import json
 
+# The order in which to show fields.
+# Read from ~/.config/watchweather/fields.
+# There's one version with blanks in it, for pretty formatting,
+# and another that's just the fields in order.
+field_order = None
+field_order_fmt = None
+
+# Log files are named ~/.cache/watchserver/clientname-YYYY-MM-DD
+# and contain CSV lines, with only the fields specified in field_order.
+# If logging isn't wanted, set this to None.
+savedir = os.path.expanduser("~/.cache/watchserver")
+if not os.path.exists(savedir):
+    os.makedirs(savedir)
+
 # A dictionary of dictionaries with various quantities we can report.
 # The key in stations is station name.
 # Dicts should include 'time' (datetime of last update).
@@ -15,21 +29,8 @@ import json
 # because that's what's sent in web requests.
 stations = {}
 
-# The order in which to show fields.
-# Read from ~/.config/watchweather/fields.
-field_order = None
-
-# How long to keep stations if they stop reporting:
+# How long to remember stations if they stop reporting.
 expire_after = datetime.timedelta(minutes=5)
-
-# If the environment variable WEATHER_DATA_DIR is set,
-# data will be saved to JSONL files in that directory.
-# Why not CSV? Because a station might report completely different
-# quantities each time: there's no way to predict what columns
-# would eventually be needed in a CSV file.
-savedir = os.getenv("WEATHER_DATA_DIR")
-if savedir and not os.path.exists(savedir):
-    os.mkdir(savedir)
 
 def initialize(expiration=None):
     '''Initialize the station list.
@@ -100,6 +101,8 @@ def update_station(station_name, station_data):
        station_data is a dictionary.
        Also prune the list of stations.
     '''
+    global field_order, field_order_fmt
+
     # station_data is all strings since it came in through JSON.
     # Parse it to something more useful.
     for key in station_data:
@@ -108,11 +111,37 @@ def update_station(station_name, station_data):
 
     stations[station_name] = station_data
 
+    if not field_order:
+        read_field_order_file()
+    if not field_order:
+        print("No field order file! Using keys from the first report.")
+        field_order = station_data.keys()
+        field_order_fmt = field_order
+
     if savedir:
-        datafilename = os.path.join(savedir, station_name) + ".jsonl"
+        # clientname-YYYY-MM-DD
+        datafilename = os.path.join(savedir,
+                                    "%s-%s.csv" % (station_name,
+                           station_data['time'].strftime("%Y-%m-%d")))
+        there_already =  os.path.exists(datafilename)
+
         with open(datafilename, "a") as datafile:
-            datafile.write(json.dumps(station_data, default=json_serial))
-            datafile.write('\n')
+            # Write a header if the file was just created:
+            if not there_already:
+                print(','.join(field_order), file=datafile)
+
+            csvfields = []
+            for field in field_order:
+                if field in station_data:
+                    csvfields.append(str(station_data[field]))
+                else:
+                    csvfields.append('')
+            print(','.join(csvfields), file=datafile)
+
+        # To write in JSONL instead:
+        # with open(datafilename, "a") as datafile:
+        #     datafile.write(json.dumps(station_data, default=json_serial))
+        #     datafile.write('\n')
 
     prune_stations()
 
@@ -202,15 +231,8 @@ def stations_summary():
 
 def station_details(stationname):
     '''Show details for just one station'''
-    if not field_order:
-        # XXX temporarily hardwired
-        configfile = os.path.expanduser("~/.config/watchweather/fields")
-        print("Trying to read fields from", configfile)
-        read_field_order_file(configfile)
 
-    # if not field_order:
-    #     return "<p><b>Missing field_order file</b>"
-    fields = field_order
+    fields = field_order_fmt
 
     html_out = '<table class="details">'
     extra_fields = ''
@@ -268,24 +290,29 @@ def station_details(stationname):
     html_out += '</table>'
     return html_out
 
-def read_field_order_file(filename):
-    global field_order
+def read_field_order_file():
+    global field_order, field_order_fmt
+
+    configfile = os.path.expanduser("~/.config/watchweather/fields")
+    print("Trying to read fields from", configfile)
 
     try:
-        fp = open(filename)
+        fp = open(configfile)
     except:
         return
 
-    if not field_order:
-        field_order = []
+    if not field_order_fmt:
+        field_order_fmt = []
 
     for line in fp:
         line = line.strip()
         if line.startswith('#'):
             continue
-        field_order.append(line)
+        field_order_fmt.append(line)
 
     fp.close()
+
+    field_order = [ f for f in field_order_fmt if f ]
 
 if __name__ == '__main__':
     initialize()
