@@ -45,7 +45,9 @@ def HTML_header(title, refresh=0, stylesheets=None):
 def HTML_footer():
     return '''
 <hr>
-<a href="/">Watchweather Server home page</a>
+<a href="/stations">Summary</a> |
+<a href="/details/all">Details</a> |
+<a href="/">Menu</a>
 </body>
 </html>
 '''
@@ -81,7 +83,7 @@ def show_stations():
 
 @app.route('/details/<stationname>')
 def details(stationname):
-    '''Show details ina  big table for a specific station, or all'''
+    '''Show details in a big table for a specific station, or all'''
 
     try:
         details = stations.station_details(stationname)
