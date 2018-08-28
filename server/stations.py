@@ -19,7 +19,11 @@ field_order_fmt = None
 # If logging isn't wanted, set this to None.
 savedir = os.path.expanduser("~/.cache/watchserver")
 if not os.path.exists(savedir):
-    os.makedirs(savedir)
+    try:
+        os.makedirs(savedir)
+    except:
+        print("LOGGING DISABLED: can't open %s" % savedir)
+        savedir = None
 
 # A dictionary of dictionaries with various quantities we can report.
 # The key in stations is station name.
@@ -132,7 +136,9 @@ def update_station(station_name, station_data):
 
             csvfields = []
             for field in field_order:
-                if field in station_data:
+                if field == 'time':
+                    csvfields.append(station_data[field].strftime("%Y-%m-%d %H:%M:%S"))
+                elif field in station_data:
                     csvfields.append(str(station_data[field]))
                 else:
                     csvfields.append('')
