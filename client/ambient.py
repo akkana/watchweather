@@ -8,7 +8,7 @@ import json
 
 fieldmap_main = {
     # 'dateutc':      '',
-    'winddir':        'win_direction',
+    'winddir':        'wind_direction',
     'windspeedmph':   'average_wind',
     'windgustmph':    'gust_speed',
     'maxdailygust':   'max_gust',
@@ -18,8 +18,7 @@ fieldmap_main = {
     'dailyrainin':    'rain_daily',
     'weeklyrainin':   'rain_weekly',
     'monthlyrainin':  'rain_monthly',
-    'totalrainin':    'rain_yearly',
-    # 'totalrainin':  '',
+    'yearlyrainin':    'rain_yearly',
     'baromrelin':     'relative_pressure',
     'baromabsin':     'absolute_pressure',
     'uv': 'uv',
