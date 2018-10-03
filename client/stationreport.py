@@ -83,7 +83,33 @@ def post_report(server, stationname, payload, port):
     else:
         url = "http://%s/report/%s" % (server, stationname)
 
-    return requests.post(url, data=payload)
+    # Sometimes requests.post() gets stuck and doesn't return, ever.
+    # Maybe a timeout will help.
+    try:
+        return requests.post(url, data=payload, timeout=10)
+    except requests.exceptions.Timeout:
+        print("Timed out after 10 seconds:", url, file=sys.stderr)
+
+# The program gets stuck sometimes after a "Couldn't post report. Is %s up?"
+# message, and doesn't continue, and I don't know why. Here's a way to
+# get a remote stack trace by sending a SIGUSR1, e.g. kill -s USR1
+# https://stackoverflow.com/questions/132058/showing-the-stack-trace-from-a-running-python-application
+import code, traceback, signal
+
+def show_stacktrace(sig, frame):
+    """Interrupt running process, and provide a python prompt for
+    interactive debugging."""
+    d={'_frame':frame}         # Allow access to frame object.
+    d.update(frame.f_globals)  # Unless shadowed by global
+    d.update(frame.f_locals)
+
+    i = code.InteractiveConsole(d)
+    message  = "Signal received : entering python shell.\nTraceback:\n"
+    message += ''.join(traceback.format_stack(frame))
+    i.interact(message)
+
+def listen_sigusr1():
+    signal.signal(signal.SIGUSR1, show_stacktrace)  # Register handler
 
 if __name__ == '__main__':
     # Usage: stationport.py stationname servername sensor
@@ -123,6 +149,9 @@ if __name__ == '__main__':
         print("Looping with time %d" % args.loop)
 
     initialize(args.sensor)
+
+    # While debugging, listen for a SIGUSR1 to see why we sometimes get stuck:
+    listen_sigusr1()
 
     while True:
         stationreport(args.servername, args.stationname,
