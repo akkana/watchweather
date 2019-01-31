@@ -76,7 +76,7 @@ class sdr_ambient:
     def read_all(self):
         line = self.proc.stdout.readline().strip()
         vals = json.loads(line)
-        # print("vals:", vals)
+        print("Input vals:", vals)
         outvals = {}
 
         for field in vals:
@@ -89,6 +89,14 @@ class sdr_ambient:
 
             elif field == 'temperature_C':
                 outvals['temperature'] = float(vals['temperature_C']) * 1.8 + 32
+
+                # Calibration: this is how much our unit seems to be off
+                # compared to a mercury thermometer:
+                outvals['temperature'] -= 2.2
+
+            # More calibration: the unit is sending uv of '2' at night:
+            elif field == 'uv':
+                outvals['uv'] = float(vals['uv']) - 2
 
             elif field in fieldmap:
                 outvals[fieldmap[field]] = vals[field]
