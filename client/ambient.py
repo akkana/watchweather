@@ -7,6 +7,7 @@ import requests
 import json
 
 fieldmap_main = {
+    # sensor_field    returned_field
     # 'dateutc':      '',
     'winddir':        'wind_direction',
     'windspeedmph':   'average_wind',
