@@ -75,9 +75,8 @@ class sdr_ambient:
 
     def read_all(self):
         line = self.proc.stdout.readline().strip()
-        print("Read a line:", line)
         vals = json.loads(line)
-        print("vals:", vals)
+        # print("vals:", vals)
         outvals = {}
 
         for field in vals:
@@ -91,7 +90,7 @@ class sdr_ambient:
             elif field in fieldmap:
                 outvals[fieldmap[field]] = vals[field]
 
-        print("Returning:", outvals)
+        # print("Returning:", outvals)
         return outvals
 
 
