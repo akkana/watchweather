@@ -87,6 +87,9 @@ class sdr_ambient:
                     outvals['rain_yearly'] = rainfall - self.rainfall_start
                 self.rainfall_start = rainfall
 
+            elif field == 'temperature_C':
+                outvals['temperature'] = float(vals['temperature_C']) * 1.8 + 32
+
             elif field in fieldmap:
                 outvals[fieldmap[field]] = vals[field]
 
