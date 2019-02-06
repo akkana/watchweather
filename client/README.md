@@ -22,3 +22,34 @@ sensor.close()                        # This may be a no-op
 
 ```
 
+# Running a client using systemd
+
+Of course you can run a client by hand (recommended when testing),
+or put it in /etc/rc.local. But you can use systemd to start it only
+after the network is up, and to restart it automatically if it dies.
+
+Create a file /lib/systemd/system/watchweather.service
+containing something like this:
+
+```
+[Unit]
+Description=Watchweather client
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+Restart=always
+ExecStart=/path/to/watchweather/client/stationreport.py -v -l 30 -p PORT NAME SERVERNAME SENSOR
+
+[Install]
+WantedBy=multi-user.target
+```
+
+Then run:
+
+```
+sudo systemctl enable watchweather
+sudo systemctl start watchweather
+```
+
