@@ -50,6 +50,7 @@ def stationreport(servername, stationname, port=5000, verbose=False,
         payload = sensor.read_all()
     except Exception as e:
         print("Couldn't read sensor:", e)
+        traceback.print_stack()
         return
 
     if verbose:

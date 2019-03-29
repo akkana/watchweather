@@ -53,3 +53,4 @@ sudo systemctl enable watchweather
 sudo systemctl start watchweather
 ```
 
+Output will show up in /var/log/daemon.log.
