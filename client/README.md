@@ -46,6 +46,19 @@ ExecStart=/path/to/watchweather/client/stationreport.py -v -l 30 -p PORT NAME SE
 WantedBy=multi-user.target
 ```
 
+SENSOR is the name of the sensor module in this directory, without
+the .py extension: for instance, Si7021.
+
+If you need the service to run as a specific user or group other than
+root -- for example, if it needs to authenticate with a web API using
+credentials stored in a file in ~/.config -- you can add them in the
+[Service] section:
+
+```
+User=watchweather
+Group=system
+```
+
 Then run:
 
 ```
@@ -53,4 +66,4 @@ sudo systemctl enable watchweather
 sudo systemctl start watchweather
 ```
 
-Output will show up in /var/log/daemon.log.
+Output will show up in /var/log/daemon.log
