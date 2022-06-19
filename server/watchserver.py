@@ -14,8 +14,7 @@ stations.initialize()
 
 
 def HTML_header(title, refresh=0, stylesheets=None):
-    """Boilerplate HTML headers. I know flask is supposed to have
-       templating but I haven't figured it out yet.
+    """Boilerplate HTML headers
     """
 
     if not stylesheets:
@@ -44,15 +43,24 @@ def HTML_header(title, refresh=0, stylesheets=None):
     return html
 
 
-def HTML_footer():
+def HTML_footer(stationname=None):
+    if stationname:
+        stationdetails = '<a href="/details/%s">%s Station Details</a> |\n' \
+            % (stationname, stationname)
+        stationweekly = '<a href="/weekly/%s">%s Station Week Summary</a> |\n' \
+            % (stationname, stationname)
+    else:
+        stationdetails = ""
+        stationweekly = ""
+
     return """
 <hr>
 <a href="/stations">Summary</a> |
-<a href="/details/all">Details</a> |
-<a href="/">Menu</a>
+%s<a href="/details/all">All Station Details</a> |
+%s<a href="/">Menu</a>
 </body>
 </html>
-"""
+""" % (stationdetails, stationweekly)
 
 
 @app.route('/')
@@ -107,7 +115,7 @@ def details(stationname):
 
     html_out = HTML_header(title)
     html_out += details
-    html_out += HTML_footer()
+    html_out += HTML_footer(stationname)
 
     return html_out
 
@@ -117,12 +125,13 @@ def weekly(stationname):
     """Summarize weekly details for a station"""
     try:
         details = stations.station_weekly(stationname)
-    except Exception as e:
+    except KeyError as e:
         details = "No station named %s: %s" % (stationname, e)
+    # XXX maybe add a case that catches other exceptions
 
-    html_out = HTML_header("Weekly report for %s" % stationname)
+    html_out = HTML_header("Weekly report for %s station" % stationname)
     html_out += details
-    html_out += HTML_footer()
+    html_out += HTML_footer(stationname)
 
     return html_out
 

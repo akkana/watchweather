@@ -9,7 +9,6 @@ import csv
 from datetime import datetime, date, timedelta
 import re
 
-
 # The order in which to show fields.
 # Read from ~/.config/watchweather/fields.
 # There's one version with blanks in it, for pretty formatting,
@@ -335,6 +334,33 @@ def station_details(stationname):
     return html_out
 
 
+class StatFields:
+    def __init__(self):
+        self.total = 0
+        self.n = 0
+        self.low = sys.maxsize
+        self.high = -sys.maxsize
+
+    def __repr__(self):
+        return """
+total:   %.2f
+number:  %d
+average: %.2f
+low:     %.2f
+high:    %.2f""" % (self.total, self.n, self.average(), self.low, self.high)
+
+    def accumulate(self, val):
+        self.total += val
+        self.n += 1
+        self.low = min(self.low, val)
+        self.high = max(self.high, val)
+
+    def average(self):
+        if not self.n:
+            return None
+        return self.total / self.n
+
+
 def station_weekly(stationname):
     """Show a weekly summary for one station"""
     if not savedir:
@@ -344,24 +370,69 @@ def station_weekly(stationname):
     # Look at last 7 days
     day = (lastdate - timedelta(days=7))
 
+    # Fields that don't need any statistics: just take the last number.
+    fields = ["rain_daily"]
+
     # clientname-YYYY-MM-DD
     html = ""
     while day <= lastdate:
         daystr = day.strftime("%Y-%m-%d")
         datafilename = os.path.join(savedir,
                                     "%s-%s.csv" % (stationname, daystr))
+        # Show highs and lows for these fields
+        highlowfields = {"temperature": StatFields(),
+                         "average_wind": StatFields(),
+                         "gust_speed": StatFields()
+                        }
+        # For some fields, lows are meaningless, it's always zero
+        highs_only = ("average_wind", "gust_speed")
         with open(datafilename, "r") as datafp:
             reader = csv.DictReader(datafp)
             for row in reader:
-                pass
-            # take only the last row, for now
-            if 'rain_daily' in row:
-                html += "<br>\n%s: rainfall %s" % (daystr, row['rain_daily'])
+                for f in highlowfields:
+                    try:
+                        val = float(row[f])
+                    except:
+                        continue
+                    highlowfields[f].accumulate(val)
+
+        # Ready to output this day
+
+        # First the table start, if it hasn't been added already:
+        if not html:
+            html = "\n<table class=\"details\"><tbody>\n<tr><th>Day "
+            for f in fields:
+                html += "<th>%s " % f
+            for f in highlowfields:
+                if f not in highs_only:
+                    html += "<th>%s<br>low " % f
+                html += "<th>%s<br>high " % f
+            html += "</tr>\n"
+
+        html += "<tr><td>%s " % str(day)
+
+        # take "fields" from only the last row,
+        for f in fields:
+            if f in row:
+                html += "<td>%.2f" % float(row[f])
             else:
-                html += "<br>\n%s: rainfall unknown" % (daystr)
+                html += "<td>&nbsp;"
+
+        for f in highlowfields:
+            if f not in highs_only:
+                if highlowfields[f].low < sys.maxsize:
+                    html += "<td>%.1f" % highlowfields[f].low
+                else:
+                    html += "<td>&nbsp;"
+            if highlowfields[f].high > 0:
+                html += "<td>%.1f" % highlowfields[f].high
+            else:
+                html += "<td>&nbsp;"
+        html += "\n"
 
         day += timedelta(days=1)
 
+    html += "</tbody></table>\n"
     return html
 
 
