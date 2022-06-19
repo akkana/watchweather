@@ -12,78 +12,88 @@ app = Flask(__name__, static_url_path='')
 
 stations.initialize()
 
+
 def HTML_header(title, refresh=0, stylesheets=None):
-    '''Boilerplate HTML headers. I know flask is supposed to have
+    """Boilerplate HTML headers. I know flask is supposed to have
        templating but I haven't figured it out yet.
-    '''
+    """
 
     if not stylesheets:
         stylesheets = ["/basic.css"]
 
-    html = '''<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+    html = """<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
 <html>
 <head>
 <meta http-equiv="content-type" content="text/html; charset=utf-8" />
-<meta name="viewport" content="width=device-width, initial-scale=1">'''
+<meta name="viewport" content="width=device-width, initial-scale=1">"""
     if refresh:
         html += '<meta http-equiv="refresh" content="%d">' % refresh
-    html += '''
+    html += """
 <title>%s</title>
-''' % (title)
+""" % (title)
     for sheet in stylesheets:
         html += '<link rel="stylesheet" type="text/css" href="%s" />\n' % sheet
 
-    html += '''
+    html += """
 </head>
 
 <body>
 
-<h1>%s</h1>''' % (title)
+<h1>%s</h1>""" % (title)
 
     return html
 
+
 def HTML_footer():
-    return '''
+    return """
 <hr>
 <a href="/stations">Summary</a> |
 <a href="/details/all">Details</a> |
 <a href="/">Menu</a>
 </body>
 </html>
-'''
+"""
+
 
 @app.route('/')
 def home_page():
     html = HTML_header("Watch Weather")
 
-    html += '''<p>\n<a href="/stations">Summary of all Stations</a>
+    html += """<p>\n<a href="/stations">Summary of all Stations</a>
 <p>
 <a href="/details/all">Detailed View of all Stations</a>
 
 <h3>Individual Stations:</h3>
-<ul>'''
+<ul>"""
 
     for stname in stations.stations:
         html += '<li><a href="/details/%s">%s Details</a>' % (stname, stname)
 
     html += '</ul>'
 
+    html += '<h3>Weekly Data:</h3>\n<ul>'
+    for stname in stations.historic_stations:
+        html += '<li><a href="/weekly/%s">%s Weekly</a> (last updated %s)' \
+            % (stname, stname, stations.historic_stations[stname])
+
     html += HTML_footer()
     return html
 
+
 @app.route('/stations')
 def show_stations():
-    '''Display a page showing all currently reporting stations.
-    '''
-    html_out = HTML_header("Stations Reporting", refresh=30,
+    """Display a page showing all currently reporting stations.
+    """
+    html_out = HTML_header("Watchweather: Stations Reporting", refresh=30,
                            stylesheets=["basic.css", "wrap.css"])
     html_out += stations.stations_summary()
     html_out += HTML_footer()
     return html_out
 
+
 @app.route('/details/<stationname>')
 def details(stationname):
-    '''Show details in a big table for a specific station, or all'''
+    """Show details in a big table for a specific station, or all"""
 
     try:
         details = stations.station_details(stationname)
@@ -101,10 +111,26 @@ def details(stationname):
 
     return html_out
 
+
+@app.route('/weekly/<stationname>', methods=['POST', 'GET'])
+def weekly(stationname):
+    """Summarize weekly details for a station"""
+    try:
+        details = stations.station_weekly(stationname)
+    except Exception as e:
+        details = "No station named %s: %s" % (stationname, e)
+
+    html_out = HTML_header("Weekly report for %s" % stationname)
+    html_out += details
+    html_out += HTML_footer()
+
+    return html_out
+
+
 @app.route('/report/<stationname>', methods=['POST', 'GET'])
 def report(stationname):
-    '''Accept a report over http from one station.
-    '''
+    """Accept a report over http from one station.
+    """
     if request.method == 'POST':
         print("Got a report from %s including:" % stationname,
               ', '.join(list(request.form.keys())))
@@ -129,4 +155,3 @@ def report(stationname):
     # the code below is executed if the request method
     # was GET or the credentials were invalid
     return "Error: request.method was %s" % request.method
-

@@ -3,9 +3,12 @@
 # Manage a list of stations which are periodically reporting
 # measured quantities such as temperature and humidity.
 
-import datetime
-import os
+import os, sys
 import json
+import csv
+from datetime import datetime, date, timedelta
+import re
+
 
 # The order in which to show fields.
 # Read from ~/.config/watchweather/fields.
@@ -13,6 +16,7 @@ import json
 # and another that's just the fields in order.
 field_order = None
 field_order_fmt = None
+
 
 # Log files are named ~/.cache/watchserver/clientname-YYYY-MM-DD
 # and contain CSV lines, with only the fields specified in field_order.
@@ -33,24 +37,52 @@ if not os.path.exists(savedir):
 # because that's what's sent in web requests.
 stations = {}
 
+historic_stations = {}
+
 # How long to remember stations if they stop reporting.
-expire_after = datetime.timedelta(minutes=5)
+expire_after = timedelta(minutes=5)
+
 
 def initialize(expiration=None):
-    '''Initialize the station list.
+    """Initialize the station list.
        The optional expiration argument is a datetime.timedelta
        specifying how long to keep stations that stop reporting.
-    '''
+    """
     if expiration:
         expire_after = expiration
+
+    # Populate historic_stations with a list of anything that
+    # has an entry in the savedir.
+    for csvfilename in os.listdir(savedir):
+        # Valid filenames are like "Stationname-2021-08-27.csv"
+        try:
+            m = re.match(r'(.*)-(\d\d\d\d-\d\d-\d\d)\.csv', csvfilename)
+            if not m:
+                print("Illegal historic file", csvfilename, file=sys.stderr)
+                continue
+            stationname = m.group(1)
+            # there's no date.strptime, alas
+            filedate = datetime.strptime(m.group(2), '%Y-%m-%d').date()
+
+        except Exception as e:
+            print("Exception parsing filename %s: %s" % (csvfilename, e),
+                  file=sys.stderr)
+            continue
+
+        if stationname in historic_stations:
+            historic_stations[stationname] = max(historic_stations[stationname],
+                                                 filedate)
+        else:
+            historic_stations[stationname] = filedate
 
     # To get a list of bogus stations for testing, uncomment the next line:
     # populate_bogostations(5)
 
+
 def populate_bogostations(nstations):
-    '''Create a specified number of  bogus stations to test the web server.
+    """Create a specified number of  bogus stations to test the web server.
        If you want to test layout, you probably want to create at least 5.
-    '''
+    """
     import random
 
     stationnames = [ 'office', 'patio', 'garden', 'garage', 'kitchen',
@@ -60,22 +92,24 @@ def populate_bogostations(nstations):
     for st in stationnames[:nstations]:
         stations[st] = { 'temperature': "%.1f" % (random.randint(65, 102)),
                          'humidity':    "%.1f" % (random.randint(1, 100) / 100),
-                         'time' :       datetime.datetime.now()
+                         'time' :       datetime.now()
                        }
+
 
 # The idiot python json module can't handle datetimes,
 # so those have to be treated specially:
 def json_serial(obj):
     """JSON serializer for objects not serializable by default json code"""
-    if isinstance(obj, (datetime.datetime, datetime.date)):
+    if isinstance(obj, (datetime, date)):
         return obj.isoformat()
     raise TypeError ("Type %s not serializable" % type(obj))
 
+
 def parse(val):
-    '''Take a value, which might be a str, float, datetime or int,
+    """Take a value, which might be a str, float, datetime or int,
        and parse it if it's a float or datetime since those will
        need reformatting.
-    '''
+    """
     if type(val) is not str:
         return val
     try:
@@ -87,24 +121,25 @@ def parse(val):
     except:
         pass
     try:
-        return datetime.datetime.strptime(val, '%Y-%m-%d %H:%M:%S')
+        return datetime.strptime(val, '%Y-%m-%d %H:%M:%S')
     except:
         pass
     try:
-        return datetime.datetime.strptime(val, '%Y-%m-%d %H:%M:%S.%f')
+        return datetime.strptime(val, '%Y-%m-%d %H:%M:%S.%f')
     except:
         pass
     try:
-        return datetime.datetime.strptime(val, '%Y-%m-%d %H:%M')
+        return datetime.strptime(val, '%Y-%m-%d %H:%M')
     except:
         pass
     return val
 
+
 def update_station(station_name, station_data):
-    '''Update a station, adding it if it's new.
+    """Update a station, adding it if it's new.
        station_data is a dictionary.
        Also prune the list of stations.
-    '''
+    """
     global field_order, field_order_fmt
 
     # station_data is all strings since it came in through JSON.
@@ -151,10 +186,11 @@ def update_station(station_name, station_data):
 
     prune_stations()
 
+
 def prune_stations():
-    '''Remove any station that hasn't reported in a while.
-    '''
-    now = datetime.datetime.now()
+    """Remove any station that hasn't reported in a while.
+    """
+    now = datetime.now()
     deleted_stations = []
     for stname in stations:
         try:
@@ -167,25 +203,26 @@ def prune_stations():
     for d in deleted_stations:
         del stations[d]
 
+
 def stations_summary():
-    '''Return an HTML string representing all the reporting stations.
+    """Return an HTML string representing all the reporting stations.
        Only show temperature, humidity and rain_daily.
        XXX Eventually make this configurable.
-    '''
+    """
     outstr = ''
     showkeys = [ 'temperature', 'humidity', 'rain_daily' ]
 
     for stname in stations:
         st = stations[stname]
 
-        outstr += '''
+        outstr += """
 <fieldset class="stationbox">
 
 <legend>%s</legend>
 
 <table class="datatable">
 <tr>
-''' % (stname)
+""" % (stname)
 
         # keys = list(st.keys())
 
@@ -235,8 +272,9 @@ def stations_summary():
 
     return outstr
 
+
 def station_details(stationname):
-    '''Show details for just one station'''
+    """Show details for just one station"""
 
     fields = field_order_fmt
 
@@ -276,7 +314,7 @@ def station_details(stationname):
             # Not all stations have all fields, so be prepared
             # for a KeyError:
             try:
-                # Time should normally be datetime.datetime.
+                # Time should normally be datetime.
                 # Rewrite time to get rid of decimal seconds
                 # that would appear if we just did a string conversion:
                 if field == 'time' and hasattr(st[field], 'strftime'):
@@ -296,11 +334,41 @@ def station_details(stationname):
     html_out += '</table>'
     return html_out
 
+
+def station_weekly(stationname):
+    """Show a weekly summary for one station"""
+    if not savedir:
+        raise RuntimeError("No data dir, can't show a weekly summary")
+
+    lastdate = historic_stations[stationname]
+    # Look at last 7 days
+    day = (lastdate - timedelta(days=7))
+
+    # clientname-YYYY-MM-DD
+    html = ""
+    while day <= lastdate:
+        daystr = day.strftime("%Y-%m-%d")
+        datafilename = os.path.join(savedir,
+                                    "%s-%s.csv" % (stationname, daystr))
+        with open(datafilename, "r") as datafp:
+            reader = csv.DictReader(datafp)
+            for row in reader:
+                pass
+            # take only the last row, for now
+            if 'rain_daily' in row:
+                html += "<br>\n%s: rainfall %s" % (daystr, row['rain_daily'])
+            else:
+                html += "<br>\n%s: rainfall unknown" % (daystr)
+
+        day += timedelta(days=1)
+
+    return html
+
+
 def read_field_order_file():
     global field_order, field_order_fmt
 
     configfile = os.path.expanduser("~/.config/watchweather/fields")
-    print("Trying to read fields from", configfile)
 
     try:
         fp = open(configfile)
