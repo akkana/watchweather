@@ -371,7 +371,7 @@ def station_weekly(stationname):
     day = (lastdate - timedelta(days=7))
 
     # Fields that don't need any statistics: just take the last number.
-    fields = ["rain_daily"]
+    fields = ["rain_daily", "rain_monthly", "rain_yearly"]
 
     # clientname-YYYY-MM-DD
     html = ""

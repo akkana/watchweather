@@ -44,7 +44,7 @@ def HTML_header(title, refresh=0, stylesheets=None):
 
 
 def HTML_footer(stationname=None):
-    if stationname:
+    if stationname and stationname != "all":
         stationdetails = '<a href="/details/%s">%s Station Details</a> |\n' \
             % (stationname, stationname)
         stationweekly = '<a href="/weekly/%s">%s Station Week Summary</a> |\n' \
