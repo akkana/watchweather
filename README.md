@@ -4,21 +4,27 @@ Display the output of multiple temperature stations on one page.
 
 For instance, you can set up several Raspberry Pis around the house,
 each with a temperature/humidity sensor, and display the output from
-all of them on one page.
+all of them on one page, along with reports from your official weather
+station or any other weather station that you can fetch via an API.
+See the _client_ directory for types of weather reports supported
+so far.
+
+Reports are also logged, and there is a very limited facility for
+reporting historic data. I hope to improve that eventually and add
+graphs.
 
 This is not limited to weather data: you could use the framework for
-any quantities you want to report. It would be better to have a
-more general name, and if I think of a good name I'll rename the
+any quantities you want to check, report and log. It would be better to
+have a more general name, and if I think of a good name I'll rename the
 repository.
 
 ## Running the Server
 
-This is in an early stage of development. To test it, first create the
-needed configuration files:
+To test the watchweather server, first create the needed configuration files:
 
 ```
 mkdir ~/.config/watchweather/
-cat >;~/.config/watchweather/fields <<EOF
+cat >~/.config/watchweather/fields <<EOF
 temperature
 humidity
 rain
@@ -44,7 +50,7 @@ export FLASK_DEBUG=1
 ```
 though this is deceptive since debug *mode* is already on.
 
-## Reporting some Data using Clients
+## Client Data Reporting
 
 The clients report data to the server using the program
 client/stationreport.py.
@@ -124,6 +130,16 @@ a long list of values.
 
 You can use "all" as the station name to see a table of all
 stations that have reported.
+
+### /weekly/<stationname>
+
+```
+[http://localhost:5000/details/all](http://localhost:5000/details/all)
+```
+
+A table of selected data reported by the station in the last 7 days.
+Useful for keeping track of quantities like daily rainfall that get
+reset each day when you didn't stay glued to watchweather until midnight.
 
 ### /report/<stationname>
 
