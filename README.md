@@ -16,12 +16,14 @@ repository.
 This is in an early stage of development. To test it, first create the
 needed configuration files:
 
+```
 mkdir ~/.config/watchweather/
-cat >~/.config/watchweather/fields <<EOF
+cat >;~/.config/watchweather/fields <<EOF
 temperature
 humidity
 rain
 EOF
+```
 
 Then run the server:
 
