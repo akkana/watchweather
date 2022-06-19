@@ -413,7 +413,7 @@ def station_weekly(stationname):
 
         # take "fields" from only the last row,
         for f in fields:
-            if f in row:
+            if f in row and row[f]:
                 html += "<td>%.2f" % float(row[f])
             else:
                 html += "<td>&nbsp;"

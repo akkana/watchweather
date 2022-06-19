@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 
-import datetime
+from datetime import datetime, date, timedelta
 
 from flask import Flask, request, url_for
 
@@ -80,11 +80,17 @@ def home_page():
     html += '</ul>'
 
     html += '<h3>Weekly Data:</h3>\n<ul>'
+    today = date.today()
     for stname in stations.historic_stations:
-        html += '<li><a href="/weekly/%s">%s Weekly</a> (last updated %s)' \
-            % (stname, stname, stations.historic_stations[stname])
+        if today - stations.historic_stations[stname] > timedelta(days=7):
+            style = "historic"
+        else:
+            style = "current"
+        html += '<li class="%s"><a href="/weekly/%s">%s Weekly</a> ' \
+                '(last updated %s)</li>\n' \
+            % (style, stname, stname, stations.historic_stations[stname])
 
-    html += HTML_footer()
+    html += "</ul>\n" + HTML_footer()
     return html
 
 
@@ -152,7 +158,7 @@ def report(stationname):
         vals = request.form.to_dict()
 
         # If it doesn't have a last-updated time, add one:
-        vals['time'] = datetime.datetime.now()
+        vals['time'] = datetime.now()
 
         stations.update_station(stationname, vals)
 
