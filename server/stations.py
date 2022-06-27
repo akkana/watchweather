@@ -9,12 +9,19 @@ import csv
 from datetime import datetime, date, timedelta
 import re
 
+
 # The order in which to show fields.
 # Read from ~/.config/watchweather/fields.
 # There's one version with blanks in it, for pretty formatting,
 # and another that's just the fields in order.
 field_order = None
 field_order_fmt = None
+
+
+def prettify(field):
+    """Convert a field in the data into a user-visible field
+    """
+    return field.replace('_', ' ').title()
 
 
 # Log files are named ~/.cache/watchserver/clientname-YYYY-MM-DD
@@ -36,7 +43,8 @@ if not os.path.exists(savedir):
 # because that's what's sent in web requests.
 stations = {}
 
-historic_stations = {}
+# A dictionary of { "station_name": last_date }
+last_station_update = {}
 
 # How long to remember stations if they stop reporting.
 expire_after = timedelta(minutes=5)
@@ -50,7 +58,7 @@ def initialize(expiration=None):
     if expiration:
         expire_after = expiration
 
-    # Populate historic_stations with a list of anything that
+    # Populate last_station_update with a list of anything that
     # has an entry in the savedir.
     for csvfilename in os.listdir(savedir):
         # Valid filenames are like "Stationname-2021-08-27.csv"
@@ -68,11 +76,11 @@ def initialize(expiration=None):
                   file=sys.stderr)
             continue
 
-        if stationname in historic_stations:
-            historic_stations[stationname] = max(historic_stations[stationname],
+        if stationname in last_station_update:
+            last_station_update[stationname] = max(last_station_update[stationname],
                                                  filedate)
         else:
-            historic_stations[stationname] = filedate
+            last_station_update[stationname] = filedate
 
     # To get a list of bogus stations for testing, uncomment the next line:
     # populate_bogostations(5)
@@ -306,7 +314,7 @@ def station_details(stationname):
             continue
 
         html_out += '<tr>\n'
-        html_out += '<td>%s\n' % (field.replace('_', ' ').title())
+        html_out += '<td>%s\n' % prettify(field)
         for stname in showstations:
             st = showstations[stname]
 
@@ -336,6 +344,7 @@ def station_details(stationname):
 
 class StatFields:
     def __init__(self):
+        # total and n are for calculating averages: not currently used
         self.total = 0
         self.n = 0
         self.low = sys.maxsize
@@ -366,12 +375,20 @@ def station_weekly(stationname):
     if not savedir:
         raise RuntimeError("No data dir, can't show a weekly summary")
 
-    lastdate = historic_stations[stationname]
+    lastdate = last_station_update[stationname]
+
     # Look at last 7 days
     day = (lastdate - timedelta(days=7))
 
     # Fields that don't need any statistics: just take the last number.
-    fields = ["rain_daily", "rain_monthly", "rain_yearly"]
+    fields = ["rain_daily", "rain_event", "rain_monthly", "rain_yearly"]
+
+    # A rainfall "event" means rain that has occurred without a break
+    # of 24 hours or more. But that's tricky to calculate since the
+    # most granular field is rain_hourly. So just use the last rain_daily
+    # value for each day.
+    rainfall_event = 0.
+    last_rain_day = date(1970, 1, 1)
 
     # clientname-YYYY-MM-DD
     html = ""
@@ -396,17 +413,27 @@ def station_weekly(stationname):
                         continue
                     highlowfields[f].accumulate(val)
 
+        # The last row contains the rainfall for the day
+        if 'rain_daily' in row and row['rain_daily']:
+            row['rain_daily'] = float(row['rain_daily'])
+        if row['rain_daily']:
+            rainfall_event += row['rain_daily']
+            last_rain_day = day
+        else:
+            rainfall_event = 0.
+        row["rain_event"] = rainfall_event
+
         # Ready to output this day
 
         # First the table start, if it hasn't been added already:
         if not html:
             html = "\n<table class=\"details\"><tbody>\n<tr><th>Day "
             for f in fields:
-                html += "<th>%s " % f
+                html += "<th>%s " % prettify(f)
             for f in highlowfields:
                 if f not in highs_only:
-                    html += "<th>%s<br>low " % f
-                html += "<th>%s<br>high " % f
+                    html += "<th>%s<br>Low " % prettify(f)
+                html += "<th>%s<br>High " % prettify(f)
             html += "</tr>\n"
 
         html += "<tr><td>%s " % str(day)

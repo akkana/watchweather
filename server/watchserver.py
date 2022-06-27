@@ -81,14 +81,14 @@ def home_page():
 
     html += '<h3>Weekly Data:</h3>\n<ul>'
     today = date.today()
-    for stname in stations.historic_stations:
-        if today - stations.historic_stations[stname] > timedelta(days=7):
+    for stname in stations.last_station_update:
+        if today - stations.last_station_update[stname] > timedelta(days=7):
             style = "historic"
         else:
             style = "current"
         html += '<li class="%s"><a href="/weekly/%s">%s Weekly</a> ' \
                 '(last updated %s)</li>\n' \
-            % (style, stname, stname, stations.historic_stations[stname])
+            % (style, stname, stname, stations.last_station_update[stname])
 
     html += "</ul>\n" + HTML_footer()
     return html
