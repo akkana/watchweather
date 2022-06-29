@@ -7,6 +7,7 @@ import os, sys
 import json
 import csv
 from datetime import datetime, date, timedelta
+from time import mktime
 import re
 
 
@@ -165,7 +166,7 @@ def update_station(station_name, station_data):
         field_order_fmt = field_order
 
     if savedir:
-        # clientname-YYYY-MM-DD
+        # files are named clientname-YYYY-MM-DD
         datafilename = os.path.join(savedir,
                                     "%s-%s.csv" % (station_name,
                            station_data['time'].strftime("%Y-%m-%d")))
@@ -463,6 +464,46 @@ def station_weekly(stationname):
     return html
 
 
+def read_csv_file(filename):
+    with open(filename, "r") as datafp:
+        reader = csv.DictReader(datafp)
+        return [ row for row in reader ]
+
+
+def get_plot_data(stationname, valtypes, datelist):
+    """Given ["rain_daily", "temp_high", "temp_low"], [list of dates],
+       Return something like
+       ( [list of datetimes],
+         { "rain_daily": [list of floats],
+           "temperature: [list of floats]
+         }
+       )
+       Valtypes supported: "rain_daily", "high_temp", "low_temp".
+    """
+    day = date(1000, 1, 1)
+    rdatelist = []
+    rdict = {}
+    if 'rain_daily' in valtypes:
+        rdict['rain_daily'] = []
+    print(datelist)
+    for d in datelist:
+        if d > day:
+            day = d
+            daystr = day.strftime("%Y-%m-%d")
+            datafilepath = os.path.join(savedir,
+                                        "%s-%s.csv" % (stationname, daystr))
+            try:
+                daydata = read_csv_file(datafilepath)
+            except FileNotFoundError:
+                print("Skipping", day, ": no data file")
+                continue
+            if 'rain_daily' in valtypes and 'rain_daily' in daydata[-1]:
+                rdatelist.append(mktime(d.timetuple()) * 1000)
+                rdict['rain_daily'].append(float(daydata[-1]['rain_daily']))
+
+    return rdatelist, rdict
+
+
 def read_field_order_file():
     global field_order, field_order_fmt
 
@@ -485,6 +526,7 @@ def read_field_order_file():
     fp.close()
 
     field_order = [ f for f in field_order_fmt if f ]
+
 
 if __name__ == '__main__':
     initialize()

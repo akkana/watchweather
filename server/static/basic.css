@@ -4,4 +4,6 @@ table.details tr:nth-child(even) { background-color: #f2f2f2; }
 table.details .val { padding: .1em 1em; }
 table.details td, table.details th { text-align: center; padding: .2em 1em; }
 
+table.menu th, table.menu td { padding: .4em; }
+
 .historic { background: #ddd; }

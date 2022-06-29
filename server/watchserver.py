@@ -2,7 +2,7 @@
 
 from datetime import datetime, date, timedelta
 
-from flask import Flask, request, url_for
+from flask import Flask, request, url_for, render_template
 
 # The code to keep track of our reporting stations:
 import stations
@@ -79,18 +79,21 @@ def home_page():
 
     html += '</ul>'
 
-    html += '<h3>Weekly Data:</h3>\n<ul>'
+    html += '<h3>Historic Data:</h3>\n<table class="menu">\n'
     today = date.today()
     for stname in stations.last_station_update:
         if today - stations.last_station_update[stname] > timedelta(days=7):
             style = "historic"
         else:
             style = "current"
-        html += '<li class="%s"><a href="/weekly/%s">%s Weekly</a> ' \
-                '(last updated %s)</li>\n' \
-            % (style, stname, stname, stations.last_station_update[stname])
+        html += '<tr class="%s"><th>%s</th>\n' \
+                '  <td><a href="/weekly/%s">Weekly</a></td>\n' \
+                '  <td><a href="/plot/%s">Plots</a></td>\n' \
+                '  <td>(last updated %s)</td></tr>\n' \
+                % (style, stname, stname, stname,
+                   stations.last_station_update[stname])
 
-    html += "</ul>\n" + HTML_footer()
+    html += "</table>\n" + HTML_footer()
     return html
 
 
@@ -170,3 +173,23 @@ def report(stationname):
     # the code below is executed if the request method
     # was GET or the credentials were invalid
     return "Error: request.method was %s" % request.method
+
+
+@app.route('/plot/<stationname>', methods=['POST', 'GET'])
+def plot(stationname):
+    """Plot weather for a station.
+       Currently only plots rain.
+    """
+
+    today = date.today()
+    d = today - timedelta(days=7)
+    days = []
+    while d <= today:
+        days.append(d)
+        d += timedelta(days=1)
+    times, data = stations.get_plot_data(stationname, ['rain_daily'], days)
+
+    return render_template('wx_timeseries.html',
+                           title='Weather data for %s' % stationname,
+                           times=times, data=data)
+

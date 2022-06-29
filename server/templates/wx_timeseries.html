@@ -1,0 +1,92 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <title>{{ title }}</title>
+  <script src="/chart.min.js"></script>
+  <script src="/moment.min.js"></script>
+  <script src="/chartjs-adapter-moment.js"></script>
+</head>
+
+<body>
+  <center>
+    <h1>{{ title }}</h1>
+
+    <canvas id="rainChart" width="600" height="350"></canvas>
+    <script>
+
+// With moment.js you can also do things like:
+// const startDate = moment().subtract(1, 'd');
+
+const startDate = new Date(1619701200*1000);
+    // first label from your data, times 1000 to get milliseconds,
+    // for last 24 hours from now, see further down below
+
+const myLabels = [
+{% for t in times %}
+     new Date( {{ t }} ),
+{% endfor %}
+];
+
+// console.log("labels:", myLabels);
+
+const ctx = document.querySelector('canvas').getContext('2d');
+
+const rainChart = new Chart(ctx, {
+    data: {
+        labels: myLabels,
+        datasets: [
+            // First dataset displays on top
+            {% if 'rain_event' in data %}
+            {
+                type: 'line',
+                label: "Rain Event",
+                data: [
+	            {% for item in data['rain_event'] %}
+                    {{ item }} / 2.,
+                    {% endfor %}
+                ],
+                borderColor: "red",
+                fill: false
+            },
+            {% endif %}
+            {% if 'rain_daily' in data %}
+            {
+                type: 'bar',
+                label: "Daily Rain",
+                data: [
+	            {% for item in data['rain_daily'] %}
+                        {{ item }},
+                    {% endfor %}
+                ],
+                // The doc says you can set borderColor for a bar chart,
+                // but it doesn't work for me.
+                borderColor: "black",
+                backgroundColor: "blue",
+            },
+            {% endif %}
+          ],
+     },
+    options: {
+      scales: {
+        x: {
+          type: 'timeseries',
+          time: {
+            unit: 'day',
+            displayFormats: {
+              hour: 'D-M-Y'         // can append  H:00:00
+            },
+            tooltipFormat: 'D-M-Y'  // <-- same format for tooltip
+          }
+        },
+        y: {
+          min: 0, max: 2
+        }
+      }
+    }
+  });
+
+    </script>
+  </center>
+</body>
+</html>
