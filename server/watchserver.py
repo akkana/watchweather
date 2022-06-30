@@ -189,7 +189,7 @@ def plot(stationname):
         d += timedelta(days=1)
     times, data = stations.get_plot_data(stationname, ['rain_daily'], days)
 
-    return render_template('wx_timeseries.html',
+    return render_template('plots.html',
                            title='Weather data for %s' % stationname,
                            times=times, data=data)
 
