@@ -7,3 +7,9 @@ table.details td, table.details th { text-align: center; padding: .2em 1em; }
 table.menu th, table.menu td { padding: .4em; }
 
 .historic { background: #ddd; }
+
+/* chart.js doesn't let you size the canvas,
+ * but you can size the container it's in.
+ */
+.chart-container { width: 95%; height: 300px !important; }
+

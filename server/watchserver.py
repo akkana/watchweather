@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 
 from datetime import datetime, date, timedelta
+from math import ceil
 
 from flask import Flask, request, url_for, render_template
 
@@ -188,6 +189,9 @@ def plot(stationname):
         days.append(d)
         d += timedelta(days=1)
     times, data = stations.get_plot_data(stationname, ['rain_daily'], days)
+    # charts.js can't do auto scaling, and jinja can't do max, so
+    # calculate it here, rounded up to multiples of .1
+    data['rain_daily_max'] = ceil(max(data['rain_daily']) * 10) / 10
 
     return render_template('plots.html',
                            title='Weather data for %s' % stationname,

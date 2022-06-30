@@ -1,8 +1,9 @@
+<center>
 
-  <center>
-
-    <canvas id="rainChart" width="600" height="350"></canvas>
-    <script>
+  <div class="chart-container">
+    <canvas id="rainChart" class="plot"></canvas>
+  </div>
+  <script>
 
 // With moment.js you can also do things like:
 // const startDate = moment().subtract(1, 'd');
@@ -69,9 +70,12 @@ const rainChart = new Chart(ctx, {
           }
         },
         y: {
-          min: 0, max: 2
+          min: 0, max: {{ data['rain_daily_max'] }}
         }
-      }
+      },
+      // Next two options are needed in order for .chart-container CSS to work
+      responsive: true,
+      maintainAspectRatio: false
     }
   });
 
