@@ -7,7 +7,6 @@ import os, sys
 import json
 import csv
 from datetime import datetime, date, timedelta
-from time import mktime
 import re
 
 
@@ -345,19 +344,26 @@ def station_details(stationname):
 
 class StatFields:
     def __init__(self):
-        # total and n are for calculating averages: not currently used
-        self.total = 0
-        self.n = 0
-        self.low = sys.maxsize
-        self.high = -sys.maxsize
+        self.reset()
 
     def __repr__(self):
-        return """
+        if not self:
+            return "<Empty StatFields>"
+        return """StatFields:
 total:   %.2f
 number:  %d
 average: %.2f
 low:     %.2f
 high:    %.2f""" % (self.total, self.n, self.average(), self.low, self.high)
+
+    def __bool__(self):
+        return (self.n > 0)
+
+    def reset(self):
+        self.total = 0
+        self.n = 0
+        self.low = sys.maxsize
+        self.high = -sys.maxsize
 
     def accumulate(self, val):
         self.total += val
@@ -470,38 +476,167 @@ def read_csv_file(filename):
         return [ row for row in reader ]
 
 
-def get_plot_data(stationname, valtypes, datelist):
-    """Given ["rain_daily", "temp_high", "temp_low"], [list of dates],
-       Return something like
-       ( [list of datetimes],
-         { "rain_daily": [list of floats],
-           "temperature: [list of floats]
-         }
-       )
-       Valtypes supported: "rain_daily", "high_temp", "low_temp".
+#
+# Annoyingly, datetime doesn't offer a straightforward method
+# for ensuring something is either a date or a datetime.
+#
+def to_day(dt):
+    """Given datetime or date, return date"""
+    if type(dt) is date:
+        return dt
+    return dt.date()
+
+
+def to_datetime(d):
+    """Given datetime or date, return datetime"""
+    if type(d) is datetime:
+        return d
+    if type(d) is date:
+        return datetime.combine(d, datetime.min.time())
+    raise RuntimeError("Can't convert %s to datetime" % type(d))
+
+
+def read_daily_data(stationname, valtypes, start_date, end_date):
+    """Read the values from csv files that are already accumulated
+       and so should not be summed,
+       notably rain_daily and rain_event.
+       No need to specify a time increment: it's always days.
+       Return: {
+           't':        [list of datetimes],
+           'valtype1': [list of floats], ...
+       }
     """
-    day = date(1000, 1, 1)
-    rdatelist = []
-    rdict = {}
-    if 'rain_daily' in valtypes:
-        rdict['rain_daily'] = []
-    print(datelist)
-    for d in datelist:
-        if d > day:
-            day = d
+    retdata = { 't': [] }
+    for vt in valtypes:
+        retdata[vt] = []
+
+    day = to_day(start_date)
+    end_date = to_day(end_date)
+    csvreader = None
+    oneday = timedelta(days=1)
+
+    while day <= end_date:
+        daystr = day.strftime("%Y-%m-%d")
+        datafile = os.path.join(savedir,
+                                "%s-%s.csv" % (stationname, daystr))
+
+        try:
+            datafp = open(datafile)
+            csvreader = csv.DictReader(datafp)
+            for row in csvreader:
+                continue
+            datafp.close()
+
+            # Now row is the last row.
+            retdata['t'].append(day)
+            for vt in valtypes:
+                retdata[vt].append(float(row[vt]))
+
+        except FileNotFoundError:
+            print("Skipping", day, ": no data file")
+            csvreader = None
+
+        day += oneday
+
+    if datafp:
+        datafp.close()
+
+    return retdata
+
+
+def read_csv_data_resample(stationname, valtypes,
+                           start_time, end_time, time_incr):
+    """Read the values from valtypes in from csv files,
+       resampling to have values every time_incr (a datetime.timedelta)
+       Return: {
+           't':        [list of datetimes],
+           'valtype1': [list of floats], ...
+       }
+    """
+    retdata = { 't': [] }
+    statdata = {}
+    for vt in valtypes:
+        retdata[vt] = []
+        statdata[vt] = StatFields()   # has n, total, low, high
+
+    def average_this_interval():
+        retdata["t"].append(t0)
+        for vt in valtypes:
+            if statdata[vt]:
+                retdata[vt].append(statdata[vt].average())
+            else:
+                retdata[vt].append(None)
+
+            statdata[vt].reset()
+
+    t0 = to_datetime(start_time)
+    t = t0
+    t1 = t0 + time_incr
+    csvreader = None
+    day = None
+    datafp = None
+
+    while t <= end_time:
+        if not csvreader:
+            if datafp:
+                datafp.close()
+            day = to_day(t0)
             daystr = day.strftime("%Y-%m-%d")
-            datafilepath = os.path.join(savedir,
-                                        "%s-%s.csv" % (stationname, daystr))
+            datafile = os.path.join(savedir,
+                                    "%s-%s.csv" % (stationname, daystr))
+
             try:
-                daydata = read_csv_file(datafilepath)
+                datafp = open(datafile)
+                csvreader = csv.DictReader(datafp)
             except FileNotFoundError:
                 print("Skipping", day, ": no data file")
-                continue
-            if 'rain_daily' in valtypes and 'rain_daily' in daydata[-1]:
-                rdatelist.append(mktime(d.timetuple()) * 1000)
-                rdict['rain_daily'].append(float(daydata[-1]['rain_daily']))
+                csvreader = None
 
-    return rdatelist, rdict
+                # That means there's no data for this day,
+                # so skip forward a day.
+                t0 = to_datetime(day) + timedelta(days=1)
+                if t0 >= end_time:
+                    break
+                t1 = t0 + time_incr
+                if t1 > end_time:
+                    t1 = end_time
+                continue
+
+        # Now there's definitely a csvreader object
+        try:
+            row = next(csvreader)
+        except StopIteration:
+            csvreader = None
+            t0 += time_incr
+            # Loop around and try again
+            continue
+
+        t = datetime.strptime(row['time'], "%Y-%m-%d %H:%M:%S")
+        if t < t0:
+            continue
+
+        if t >= t1:
+            # end of interval:
+            # compute averages and save the new data items
+            average_this_interval()
+
+            t0 += time_incr
+            t1 = t0 + time_incr
+            if t1 > end_time:
+                t1 = end_time
+
+        # Whether a new interval or old, accumulate this row.
+        for vt in valtypes:
+            statdata[vt].accumulate(float(row[vt]))
+
+    # Save the final averages
+    if statdata[valtypes[0]]:
+        average_this_interval()
+
+    if datafp:
+        datafp.close()
+
+    return retdata
 
 
 def read_field_order_file():

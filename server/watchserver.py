@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 
 from datetime import datetime, date, timedelta
+from time import mktime
 from math import ceil
 
 from flask import Flask, request, url_for, render_template
@@ -183,17 +184,25 @@ def plot(stationname):
     """
 
     today = date.today()
-    d = today - timedelta(days=7)
-    days = []
-    while d <= today:
-        days.append(d)
-        d += timedelta(days=1)
-    times, data = stations.get_plot_data(stationname, ['rain_daily'], days)
+
+    # Plotting a daily value is easy
+    data = stations.read_daily_data(stationname, ['rain_daily'],
+                                    today - timedelta(days=7), today)
+
+    # stations.read_csv_data_resample(stationname, valtypes,
+    #                        start_time, end_time, time_incr)
+
     # charts.js can't do auto scaling, and jinja can't do max, so
-    # calculate it here, rounded up to multiples of .1
-    data['rain_daily_max'] = ceil(max(data['rain_daily']) * 10) / 10
+    # calculate it here, rounded up to multiples of roundoff.
+    def set_chart_max(key, roundoff=1):
+        data[f'{key}_max'] = ceil(max(data[key]) / roundoff) * roundoff
+    set_chart_max('rain_daily', .1)
+
+    # chart.js needs Unix times * 1000 to feed to JavaScript's Date class.
+    data['unixtimes'] = [ mktime(d.timetuple()) * 1000
+                          for d in data['t'] ]
 
     return render_template('plots.html',
                            title='Weather data for %s' % stationname,
-                           times=times, data=data)
+                           data=data)
 

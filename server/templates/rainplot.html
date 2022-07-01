@@ -8,23 +8,19 @@
 // With moment.js you can also do things like:
 // const startDate = moment().subtract(1, 'd');
 
-const startDate = new Date(1619701200*1000);
-    // first label from your data, times 1000 to get milliseconds,
-    // for last 24 hours from now, see further down below
-
-const myLabels = [
-{% for t in times %}
+const timeLabels = [
+{% for t in data['unixtimes'] %}
      new Date( {{ t }} ),
 {% endfor %}
 ];
 
-// console.log("labels:", myLabels);
+// console.log("labels:", timeLabels);
 
 const ctx = document.querySelector('canvas').getContext('2d');
 
 const rainChart = new Chart(ctx, {
     data: {
-        labels: myLabels,
+        labels: timeLabels,
         datasets: [
             // First dataset displays on top
             {% if 'rain_event' in data %}
@@ -64,7 +60,7 @@ const rainChart = new Chart(ctx, {
           time: {
             unit: 'day',
             displayFormats: {
-              hour: 'D-M-Y'         // can append  H:00:00
+              hour: 'D-M-Y'         // append  H:00:00 for datetimes
             },
             tooltipFormat: 'D-M-Y'  // <-- same format for tooltip
           }
