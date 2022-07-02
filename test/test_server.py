@@ -48,13 +48,12 @@ class ServerTests(unittest.TestCase):
     def test_client_report(self):
         stationreport.initialize("testclient")
         stationreport.stationreport('localhost', "UnitTest",
-                                    verbose=True,
                                     test_client=self.app)
 
         # Now see if it showed up on the server
         rv = self.app.get('/')
         self.assertEqual(rv.status_code, 200)
-        assert b'<a href="/details/UnitTest">UnitTest Details</a>' in rv.data
+        assert b'<a href="/details/UnitTest">Details</a>' in rv.data
 
         # Make sure it's on the summary page
         rv = self.app.get('/stations')
@@ -64,7 +63,7 @@ class ServerTests(unittest.TestCase):
         # Make sure there's a details page for it
         rv = self.app.get('/details/UnitTest')
         self.assertEqual(rv.status_code, 200)
-        assert b'<h1>UnitTest</h1>' in rv.data
+        assert b'<h1>UnitTest Details</h1>' in rv.data
         assert b'<td>Temperature\n<td class="val">85.0<tr>' in rv.data
 
 

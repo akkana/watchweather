@@ -1,4 +1,3 @@
-<center>
 
   <div class="chart-container">
     <canvas id="rainChart" class="plot"></canvas>
@@ -8,27 +7,27 @@
 // With moment.js you can also do things like:
 // const startDate = moment().subtract(1, 'd');
 
-const timeLabels = [
-{% for t in data['unixtimes'] %}
+const rainTimeLabels = [
+{% for t in dailydata['unixtimes'] %}
      new Date( {{ t }} ),
 {% endfor %}
 ];
 
-// console.log("labels:", timeLabels);
+// console.log("labels:", rainTimeLabels);
 
-const ctx = document.querySelector('canvas').getContext('2d');
+const rainctx = document.querySelector('#rainChart').getContext('2d');
 
-const rainChart = new Chart(ctx, {
+const rainChart = new Chart(rainctx, {
     data: {
-        labels: timeLabels,
+        labels: rainTimeLabels,
         datasets: [
             // First dataset displays on top
-            {% if 'rain_event' in data %}
+            {% if 'rain_event' in dailydata %}
             {
                 type: 'line',
                 label: "Rain Event",
                 data: [
-	            {% for item in data['rain_event'] %}
+	            {% for item in dailydata['rain_event'] %}
                     {{ item }} / 2.,
                     {% endfor %}
                 ],
@@ -36,12 +35,12 @@ const rainChart = new Chart(ctx, {
                 fill: false
             },
             {% endif %}
-            {% if 'rain_daily' in data %}
+            {% if 'rain_daily' in dailydata %}
             {
                 type: 'bar',
                 label: "Daily Rain",
                 data: [
-	            {% for item in data['rain_daily'] %}
+	            {% for item in dailydata['rain_daily'] %}
                         {{ item }},
                     {% endfor %}
                 ],
@@ -66,7 +65,8 @@ const rainChart = new Chart(ctx, {
           }
         },
         y: {
-          min: 0, max: {{ data['rain_daily_max'] }}
+          min: 0,
+          max: {{ dailydata['rain_daily_max'] }}
         }
       },
       // Next two options are needed in order for .chart-container CSS to work
@@ -76,4 +76,3 @@ const rainChart = new Chart(ctx, {
   });
 
     </script>
-  </center>

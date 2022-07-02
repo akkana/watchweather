@@ -30,7 +30,7 @@ stations = {}
 last_station_update = {}
 
 # How long to remember stations if they stop reporting.
-expire_after = timedelta(minutes=5)
+expire_after = None
 
 # Log files are named {savedir}/watchserver/clientname-YYYY-MM-DD
 # and contain CSV lines, with only the fields specified in field_order.
@@ -45,7 +45,7 @@ def initialize(expiration=None, savedir_path=None):
        The optional expiration argument is a datetime.timedelta
        specifying how long to keep stations that stop reporting.
     """
-    global savedir, initialized
+    global savedir, expire_after, initialized
     if initialized:
         return
 
@@ -63,10 +63,14 @@ def initialize(expiration=None, savedir_path=None):
 
     if expiration:
         expire_after = expiration
+    else:
+        expire_after = timedelta(minutes=20)
 
     # Populate last_station_update with a list of anything that
     # has an entry in the savedir.
-    for csvfilename in os.listdir(savedir):
+    # Also populate stations if the update hasn't expired.
+    today = date.today()
+    for csvfilename in sorted(os.listdir(savedir), reverse=True):
         # Valid filenames are like "Stationname-2021-08-27.csv"
         try:
             m = re.match(r'(.*)-(\d\d\d\d-\d\d-\d\d)\.csv', csvfilename)
@@ -74,20 +78,48 @@ def initialize(expiration=None, savedir_path=None):
                 print("Illegal historic file", csvfilename, file=sys.stderr)
                 continue
             stationname = m.group(1)
+
+            # Seen this station already? Because of the reverse sort,
+            # the first file seen is the most recent date, so
+            # ignore any subsequent ones.
+            if stationname in last_station_update:
+                continue
             # there's no date.strptime, alas
             filedate = datetime.strptime(m.group(2), '%Y-%m-%d').date()
+            last_station_update[stationname] = filedate
+
+            if stationname not in stations:
+                # date recent enough not to have expired?
+                if today - filedate < expire_after:
+                    # set values from the last line of the file,
+                    # which is the most recent update
+                    with open(os.path.join(savedir, csvfilename)) as csvfp:
+                        reader = csv.DictReader(csvfp)
+                        for row in reader:
+                            pass
+
+                    stations[stationname] = {}
+                    for field in row:
+                        if field == 'time':
+                            stations[stationname][field] = \
+                                datetime.strptime(row[field],
+                                                  '%Y-%m-%d %H:%M:%S')
+                        else:
+                            try:
+                                stations[stationname][field] = \
+                                    float(row[field])
+                            except ValueError:
+                                stations[stationname][field] = row[field]
+                # else:
+                #     print(stationname, ": last update was too old",
+                #           filedate, "older than", expire_after)
+
 
         except Exception as e:
             print("Exception parsing filename %s: %s" % (csvfilename, e),
                   file=sys.stderr)
             continue
 
-        if stationname in last_station_update:
-            last_station_update[stationname] = max(
-                last_station_update[stationname],
-                filedate)
-        else:
-            last_station_update[stationname] = filedate
 
     # To get a list of bogus stations for testing, uncomment the next line:
     # populate_bogostations(5)
@@ -179,6 +211,9 @@ def update_station(station_name, station_data):
               sys.stderr)
         field_order = station_data.keys()
         field_order_fmt = field_order
+
+    # Make sure it's also in last_station_update
+    last_station_update[station_name] = to_day(stations[station_name]['time'])
 
     if savedir:
         # files are named clientname-YYYY-MM-DD
@@ -382,10 +417,14 @@ high:    %.2f""" % (self.total, self.n, self.average(), self.low, self.high)
         self.high = -sys.maxsize
 
     def accumulate(self, val):
-        self.total += val
-        self.n += 1
-        self.low = min(self.low, val)
-        self.high = max(self.high, val)
+        try:
+            val = float(val)
+            self.total += val
+            self.n += 1
+            self.low = min(self.low, val)
+            self.high = max(self.high, val)
+        except ValueError:
+            pass
 
     def average(self):
         if not self.n:
@@ -562,9 +601,6 @@ def read_daily_data(stationname, valtypes, start_date, end_date):
         if vt not in retdata:
             print(f"Warning: no '{vt}' in the data", sys.stderr)
 
-    if datafp:
-        datafp.close()
-
     return retdata
 
 
@@ -651,7 +687,7 @@ def read_csv_data_resample(stationname, valtypes,
 
         # Whether a new interval or old, accumulate this row.
         for vt in valtypes:
-            statdata[vt].accumulate(float(row[vt]))
+            statdata[vt].accumulate(row[vt])
 
     # Save the final averages
     if statdata[valtypes[0]]:

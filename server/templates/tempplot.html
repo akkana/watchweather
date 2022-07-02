@@ -1,0 +1,70 @@
+
+  <div class="chart-container">
+    <canvas id="tempChart" class="plot"></canvas>
+  </div>
+  <script>
+
+// With moment.js you can also do things like:
+// const startDate = moment().subtract(1, 'd');
+
+const tempTimeLabels = [
+{% for t in hourlydata['unixtimes'] %}
+     new Date( {{ t }} ),
+{% endfor %}
+];
+
+// console.log("labels:", tempTimeLabels);
+
+const tempctx = document.querySelector('#tempChart').getContext('2d');
+
+const tempChart = new Chart(tempctx, {
+    data: {
+        labels: tempTimeLabels,
+        datasets: [
+            // First dataset displays on top
+            {% if 'temperature' in hourlydata %}
+            {
+                type: 'line',
+                label: "Temperature",
+                data: [
+	            {% for item in hourlydata['temperature'] %}
+                        {% if item == None %}
+                            null,
+                        {% else %}
+                            {{ item }},
+                        {% endif %}
+                    {% endfor %}
+                ],
+                pointRadius: 0,
+                // borderColor: the color of the line
+                borderColor: "black",
+                // backgroundColor: coloring in each circle
+                backgroundColor: "blue",
+            },
+            {% endif %}
+          ],
+     },
+    options: {
+      scales: {
+        x: {
+          type: 'timeseries',
+          time: {
+            unit: 'day',
+            displayFormats: {
+              hour: 'D-M-Y'         // can append  H:00:00
+            },
+            tooltipFormat: 'D-M-Y'  // <-- same format for tooltip
+          }
+        },
+        y: {
+          min: {{ hourlydata['temperature_min'] }},
+          max: {{ hourlydata['temperature_max'] }}
+        }
+      },
+      // Next two options are needed in order for .chart-container CSS to work
+      responsive: true,
+      maintainAspectRatio: false
+    }
+  });
+
+    </script>

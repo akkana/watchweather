@@ -13,15 +13,22 @@
 </head>
 
 <body>
-  <h1>{{ title }}</h1>
+  <h1>Weather data for {{ stationname }}</h1>
+  <p>
+  (Last report: {{ lastreport.strftime("%Y-%m-%d %H:%M:%S") }})
 
   <noscript><b>Please enable JavaScript to see plots.</b></noscript>
 
+  <h2>Daily Rain</h2>
   {% include "rainplot.html" %}
+
+  <h2>Hourly Temperatures</h2>
   {% include "tempplot.html" %}
 
 <hr>
 <a href="/stations">Summary</a> |
+<a href="/details/{{ stationname }}">{{ stationname }} Details</a> |
+<a href="/weekly/{{ stationname }}">{{ stationname }} Weekly Summary</a> |
 <a href="/details/all">All Station Details</a> |
 <a href="/">Menu</a>
 
