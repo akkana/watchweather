@@ -186,7 +186,7 @@ def plot(stationname):
     today = date.today()
 
     # Plotting a daily value is easy
-    data = stations.read_daily_data(stationname, ['rain_daily'],
+    data = stations.read_daily_data(stationname, ['rain_daily', 'rain_event'],
                                     today - timedelta(days=7), today)
 
     # stations.read_csv_data_resample(stationname, valtypes,
