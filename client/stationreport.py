@@ -13,6 +13,10 @@ import sys, os
 sensor = None
 sensormodule = None
 
+# Used for testing
+test_app = None
+
+
 def initialize(sensorname):
     global sensormodule
     global sensor
@@ -26,6 +30,7 @@ def initialize(sensorname):
     # call the initialization function of the same name as the module:
     sensor = getattr(sensormodule, sensorname)()
 
+
 def stationreport(servername, stationname, port=5000, verbose=False,
                   test_client=None):
     '''Make a report to the server:port reflecting a particular station,
@@ -34,6 +39,10 @@ def stationreport(servername, stationname, port=5000, verbose=False,
        test_client is used for automated testing since flask
        doesn't run a real server during unit tests.
     '''
+    global test_app
+    if test_client:
+        test_app = test_client
+
     if verbose:
         if test_client:
             print("Trying a test report for '%s' with sensor '%s'"
@@ -78,7 +87,13 @@ def stationreport(servername, stationname, port=5000, verbose=False,
     except requests.exceptions.ConnectionError:
         print("Couldn't post report. Is %s up?" % servername)
 
+
 def post_report(server, stationname, payload, port):
+    # If this is from a unit test, don't make a net request:
+    if test_app:
+        test_app.get('/report/%s' % stationname, data=payload)
+        return
+
     if port:
         url = "http://%s:%d/report/%s" % (server, port, stationname)
     else:
@@ -90,6 +105,7 @@ def post_report(server, stationname, payload, port):
         return requests.post(url, data=payload, timeout=10)
     except requests.exceptions.Timeout:
         print("Timed out after 10 seconds:", url, file=sys.stderr)
+
 
 # The program gets stuck sometimes after a "Couldn't post report. Is %s up?"
 # message, and doesn't continue, and I don't know why. Here's a way to

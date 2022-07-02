@@ -18,23 +18,6 @@ field_order = None
 field_order_fmt = None
 
 
-def prettify(field):
-    """Convert a field in the data into a user-visible field
-    """
-    return field.replace('_', ' ').title()
-
-
-# Log files are named ~/.cache/watchserver/clientname-YYYY-MM-DD
-# and contain CSV lines, with only the fields specified in field_order.
-# If logging isn't wanted, set this to None.
-savedir = os.path.expanduser("~/.cache/watchserver")
-if not os.path.exists(savedir):
-    try:
-        os.makedirs(savedir)
-    except:
-        print("LOGGING DISABLED: can't open %s" % savedir)
-        savedir = None
-
 # A dictionary of dictionaries with various quantities we can report.
 # The key in stations is station name.
 # Dicts should include 'time' (datetime of last update).
@@ -49,12 +32,35 @@ last_station_update = {}
 # How long to remember stations if they stop reporting.
 expire_after = timedelta(minutes=5)
 
+# Log files are named {savedir}/watchserver/clientname-YYYY-MM-DD
+# and contain CSV lines, with only the fields specified in field_order.
+# If logging isn't wanted, set this to None in initialize().
+savedir = None
 
-def initialize(expiration=None):
+initialized = False
+
+
+def initialize(expiration=None, savedir_path=None):
     """Initialize the station list.
        The optional expiration argument is a datetime.timedelta
        specifying how long to keep stations that stop reporting.
     """
+    global savedir, initialized
+    if initialized:
+        return
+
+    if savedir_path:
+        savedir = savedir_path
+    else:
+        savedir = os.path.expanduser("~/.cache/watchserver")
+
+    if not os.path.exists(savedir):
+        try:
+            os.makedirs(savedir)
+        except:
+            print("LOGGING DISABLED: can't open %s" % savedir, file=sys.stderr)
+            savedir = None
+
     if expiration:
         expire_after = expiration
 
@@ -77,13 +83,22 @@ def initialize(expiration=None):
             continue
 
         if stationname in last_station_update:
-            last_station_update[stationname] = max(last_station_update[stationname],
-                                                 filedate)
+            last_station_update[stationname] = max(
+                last_station_update[stationname],
+                filedate)
         else:
             last_station_update[stationname] = filedate
 
     # To get a list of bogus stations for testing, uncomment the next line:
     # populate_bogostations(5)
+
+    initialized = True
+
+
+def prettify(field):
+    """Convert a field in the data into a user-visible field
+    """
+    return field.replace('_', ' ').title()
 
 
 def populate_bogostations(nstations):
@@ -160,7 +175,8 @@ def update_station(station_name, station_data):
     if not field_order:
         read_field_order_file()
     if not field_order:
-        print("No field order file! Using keys from the first report.")
+        print("No field order file! Using keys from the first report.",
+              sys.stderr)
         field_order = station_data.keys()
         field_order_fmt = field_order
 
@@ -204,7 +220,7 @@ def prune_stations():
             if now - stations[stname]['time'] > expire_after:
                 deleted_stations.append(stname)
         except KeyError:
-            print("No 'time' in station", stname)
+            print("No 'time' in station", stname, sys.stderr)
             pass
 
     for d in deleted_stations:
@@ -530,13 +546,21 @@ def read_daily_data(stationname, valtypes, start_date, end_date):
             # Now row is the last row.
             retdata['t'].append(day)
             for vt in valtypes:
-                retdata[vt].append(float(row[vt]))
+                try:
+                    retdata[vt].append(float(row[vt]))
+                except KeyError:
+                    pass
 
         except FileNotFoundError:
-            print("Skipping", day, ": no data file")
+            print("Skipping", day, ": no data file", sys.stderr)
             csvreader = None
 
         day += oneday
+
+    # Were there any keys not found?
+    for vt in valtypes:
+        if vt not in retdata:
+            print(f"Warning: no '{vt}' in the data", sys.stderr)
 
     if datafp:
         datafp.close()
@@ -589,7 +613,7 @@ def read_csv_data_resample(stationname, valtypes,
                 datafp = open(datafile)
                 csvreader = csv.DictReader(datafp)
             except FileNotFoundError:
-                print("Skipping", day, ": no data file")
+                print("Skipping", day, ": no data file", sys.stderr)
                 csvreader = None
 
                 # That means there's no data for this day,

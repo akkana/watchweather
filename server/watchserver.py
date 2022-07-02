@@ -9,10 +9,9 @@ from flask import Flask, request, url_for, render_template
 # The code to keep track of our reporting stations:
 import stations
 
+
 # set the project root directory as the static folder, you can set others.
 app = Flask(__name__, static_url_path='')
-
-stations.initialize()
 
 
 def HTML_header(title, refresh=0, stylesheets=None):
@@ -67,6 +66,8 @@ def HTML_footer(stationname=None):
 
 @app.route('/')
 def home_page():
+    stations.initialize()
+
     html = HTML_header("Watch Weather")
 
     html += """<p>\n<a href="/stations">Summary of all Stations</a>
@@ -103,6 +104,8 @@ def home_page():
 def show_stations():
     """Display a page showing all currently reporting stations.
     """
+    stations.initialize()
+
     html_out = HTML_header("Watchweather: Stations Reporting", refresh=30,
                            stylesheets=["basic.css", "wrap.css"])
     html_out += stations.stations_summary()
@@ -112,7 +115,9 @@ def show_stations():
 
 @app.route('/details/<stationname>')
 def details(stationname):
-    """Show details in a big table for a specific station, or all"""
+    """Show details in a big table for a specific station, or all
+    """
+    stations.initialize()
 
     try:
         details = stations.station_details(stationname)
@@ -134,6 +139,8 @@ def details(stationname):
 @app.route('/weekly/<stationname>', methods=['POST', 'GET'])
 def weekly(stationname):
     """Summarize weekly details for a station"""
+    stations.initialize()
+
     try:
         details = stations.station_weekly(stationname)
     except KeyError as e:
@@ -150,31 +157,26 @@ def weekly(stationname):
 @app.route('/report/<stationname>', methods=['POST', 'GET'])
 def report(stationname):
     """Accept a report over http from one station.
+       Real clients generally use POST, but the unittest test app uses GET.
     """
-    if request.method == 'POST':
-        print("Got a report from %s including:" % stationname,
-              ', '.join(list(request.form.keys())))
+    stations.initialize()
 
-        # request.form is type ImmutableMultiDict, which isn't too useful:
-        # first, it's immutable, and second, indexed items seem to be
-        # lists of strings instead of just strings, though this doesn't
-        # seem to be documented anywhere.
-        # Turn it into a normal dictionary like we use in stations.py:
-        vals = request.form.to_dict()
+    # request.form is type ImmutableMultiDict, which isn't too useful:
+    # first, it's immutable, and second, indexed items seem to be
+    # lists of strings instead of just strings, though this doesn't
+    # seem to be documented anywhere.
+    # Turn it into a normal dictionary like we use in stations.py:
+    vals = request.form.to_dict()
 
-        # If it doesn't have a last-updated time, add one:
-        vals['time'] = datetime.now()
+    # If it doesn't have a last-updated time, add one:
+    vals['time'] = datetime.now()
 
-        stations.update_station(stationname, vals)
+    stations.update_station(stationname, vals)
 
-        retstr = ''
-        for key in request.form:
-            retstr += '%s: %s\n' % (key, request.form[key])
-        return retstr
-
-    # the code below is executed if the request method
-    # was GET or the credentials were invalid
-    return "Error: request.method was %s" % request.method
+    retstr = 'Content-type: text/plain\n\n'
+    for key in request.form:
+        retstr += '%s: %s\n' % (key, request.form[key])
+    return retstr
 
 
 @app.route('/plot/<stationname>', methods=['POST', 'GET'])
@@ -182,6 +184,7 @@ def plot(stationname):
     """Plot weather for a station.
        Currently only plots rain.
     """
+    stations.initialize()
 
     today = date.today()
 
