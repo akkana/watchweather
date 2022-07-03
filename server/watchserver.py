@@ -13,6 +13,11 @@ import stations
 # set the project root directory as the static folder, you can set others.
 app = Flask(__name__, static_url_path='')
 
+# Don't map all whitespace/newlines in the jinja templates into
+# whitespace in the HTML or JS:
+app.jinja_env.trim_blocks = True
+app.jinja_env.lstrip_blocks = True
+
 
 @app.route('/')
 def home_page():

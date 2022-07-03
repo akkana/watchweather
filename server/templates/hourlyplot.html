@@ -7,15 +7,6 @@
 // With moment.js you can also do things like:
 // const startDate = moment().subtract(1, 'd');
 
-// Only need one set of time labels
-if (timeLabels === undefined) {
-    var timeLabels = [
-        {% for t in hourlydata['unixtimes'] %}
-        new Date( {{ t }} ),
-        {% endfor %}
-    ]
-}
-
 const {{ key }}ctx = document.querySelector('#{{ key }}Chart').getContext('2d');
 
 const {{ key }}Chart = new Chart({{ key }}ctx, {
