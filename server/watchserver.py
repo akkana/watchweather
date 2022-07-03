@@ -18,11 +18,11 @@ app = Flask(__name__, static_url_path='')
 def home_page():
     stations.initialize()
 
-    today = date.today()
+    now = datetime.now()
 
     def station_row(stname):
         if (stname not in stations.last_station_update or
-            today - stations.last_station_update[stname] > timedelta(days=7)):
+            now - stations.last_station_update[stname] > timedelta(days=7)):
             style = "historic"
         else:
             style = "current"
