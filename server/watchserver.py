@@ -82,6 +82,7 @@ def details(stationname):
 
     return render_template('details.html',
                            title=title,
+                           stationname=stationname,
                            htmlcontent=details)
 
 
@@ -139,7 +140,7 @@ def plot(stationname):
 
     # Plotting a daily value is easy
     dailydata = stations.read_daily_data(stationname, ['rain_daily'],
-                                         today - timedelta(days=7), today)
+                                         today - timedelta(days=30), today)
 
     # More granular values may need resampling
     hourlydata = stations.read_csv_data_resample(stationname, ['temperature'],
