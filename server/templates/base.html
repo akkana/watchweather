@@ -33,7 +33,7 @@
 | <a href="/stations">All Stations Summary</a>
 | <a href="/details/all">All Station Details</a>
 
-{% if stationname %}
+{% if stationname and stationname != "all" %}
  | <a href="/details/{{ stationname }}">{{ stationname }} Details</a>
  | <a href="/weekly/{{ stationname }}">{{ stationname }} Weekly Summary</a>
  | <a href="/plot/{{ stationname }}">{{ stationname }} Plots</a>
