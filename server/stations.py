@@ -64,12 +64,12 @@ def initialize(expiration=None, savedir_path=None):
     if expiration:
         expire_after = expiration
     else:
-        expire_after = timedelta(minutes=20)
+        expire_after = timedelta(days=30)
 
     # Populate last_station_update with a list of anything that
     # has an entry in the savedir.
     # Also populate stations if the update hasn't expired.
-    today = date.today()
+    now = datetime.now()
     for csvfilename in sorted(os.listdir(savedir), reverse=True):
         # Valid filenames are like "Stationname-2021-08-27.csv"
         try:
@@ -85,12 +85,12 @@ def initialize(expiration=None, savedir_path=None):
             if stationname in last_station_update:
                 continue
             # there's no date.strptime, alas
-            filedate = datetime.strptime(m.group(2), '%Y-%m-%d').date()
+            filedate = datetime.strptime(m.group(2), '%Y-%m-%d')
             last_station_update[stationname] = filedate
 
             if stationname not in stations:
                 # date recent enough not to have expired?
-                if today - filedate < expire_after:
+                if now - filedate < expire_after:
                     # set values from the last line of the file,
                     # which is the most recent update
                     with open(os.path.join(savedir, csvfilename)) as csvfp:
@@ -104,6 +104,8 @@ def initialize(expiration=None, savedir_path=None):
                             stations[stationname][field] = \
                                 datetime.strptime(row[field],
                                                   '%Y-%m-%d %H:%M:%S')
+                            last_station_update[stationname] = \
+                                stations[stationname][field]
                         else:
                             try:
                                 stations[stationname][field] = \
@@ -213,7 +215,7 @@ def update_station(station_name, station_data):
         field_order_fmt = field_order
 
     # Make sure it's also in last_station_update
-    last_station_update[station_name] = to_day(stations[station_name]['time'])
+    last_station_update[station_name] = to_date(stations[station_name]['time'])
 
     if savedir:
         # files are named clientname-YYYY-MM-DD
@@ -437,7 +439,7 @@ def station_weekly(stationname):
     if not savedir:
         raise RuntimeError("No data dir, can't show a weekly summary")
 
-    lastdate = last_station_update[stationname]
+    lastdate = to_day(last_station_update[stationname])
 
     # Look at last 7 days
     day = (lastdate - timedelta(days=7))

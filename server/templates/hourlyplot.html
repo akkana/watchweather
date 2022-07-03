@@ -1,33 +1,34 @@
 
   <div class="chart-container">
-    <canvas id="tempChart" class="plot"></canvas>
+    <canvas id="{{ key }}Chart" class="plot"></canvas>
   </div>
   <script>
 
 // With moment.js you can also do things like:
 // const startDate = moment().subtract(1, 'd');
 
-const tempTimeLabels = [
-{% for t in hourlydata['unixtimes'] %}
-     new Date( {{ t }} ),
-{% endfor %}
-];
+// Only need one set of time labels
+if (timeLabels === undefined) {
+    var timeLabels = [
+        {% for t in hourlydata['unixtimes'] %}
+        new Date( {{ t }} ),
+        {% endfor %}
+    ]
+}
 
-// console.log("labels:", tempTimeLabels);
+const {{ key }}ctx = document.querySelector('#{{ key }}Chart').getContext('2d');
 
-const tempctx = document.querySelector('#tempChart').getContext('2d');
-
-const tempChart = new Chart(tempctx, {
+const {{ key }}Chart = new Chart({{ key }}ctx, {
     data: {
-        labels: tempTimeLabels,
+        labels: timeLabels,
         datasets: [
             // First dataset displays on top
-            {% if 'temperature' in hourlydata %}
+            {% if key in hourlydata %}
             {
                 type: 'line',
-                label: "Temperature",
+                label: "{{ key }}",
                 data: [
-	            {% for item in hourlydata['temperature'] %}
+	            {% for item in hourlydata[key] %}
                         {% if item == None %}
                             null,
                         {% else %}
@@ -38,8 +39,8 @@ const tempChart = new Chart(tempctx, {
                 pointRadius: 0,
                 // borderColor: the color of the line
                 borderColor: "black",
-                // backgroundColor: coloring in each circle
-                backgroundColor: "blue",
+                // backgroundColor: coloring in each circle, if using circles
+                // backgroundColor: "blue",
             },
             {% endif %}
           ],
@@ -57,8 +58,8 @@ const tempChart = new Chart(tempctx, {
           }
         },
         y: {
-          min: {{ hourlydata['temperature_min'] }},
-          max: {{ hourlydata['temperature_max'] }}
+          min: {{ hourlydata['%s_min' % key] }},
+          max: {{ hourlydata['%s_max' % key] }}
         }
       },
       // Next two options are needed in order for .chart-container CSS to work

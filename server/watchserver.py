@@ -56,7 +56,6 @@ def show_stations():
     stations.initialize()
 
     htmlcontent=stations.stations_summary()
-    print(htmlcontent)
 
     return render_template('stations.html',
                            title="Watchweather: Stations Reporting",
@@ -143,10 +142,13 @@ def plot(stationname):
                                          today - timedelta(days=30), today)
 
     # More granular values may need resampling
-    hourlydata = stations.read_csv_data_resample(stationname, ['temperature'],
+    hourlydata = stations.read_csv_data_resample(stationname, ['temperature',
+                                                               'humidity',
+                                                               'gust_speed'],
                                                  today - timedelta(days=30),
                                                  now,
                                                  timedelta(hours=1))
+
     # charts.js can't do auto scaling, and jinja can't do max, so
     # calculate it here, rounded up to multiples of roundoff.
     def set_chart_maxmin(data, key, roundoff=1):
@@ -160,8 +162,11 @@ def plot(stationname):
         data[f'{key}_min'] = floor(min([x for x in data[key] if x])
                                   / roundoff) * roundoff
 
+    # Set min and max for anything we want plotted.
     set_chart_maxmin(dailydata, 'rain_daily', .1)
     set_chart_maxmin(hourlydata, 'temperature', 1)
+    set_chart_maxmin(hourlydata, 'humidity', 1)
+    set_chart_maxmin(hourlydata, 'gust_speed', 1)
 
     # chart.js needs Unix times * 1000 to feed to JavaScript's Date class.
     dailydata['unixtimes'] = [ mktime(d.timetuple()) * 1000

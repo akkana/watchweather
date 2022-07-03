@@ -15,15 +15,18 @@
 <body>
   <h1>Weather data for {{ stationname }}</h1>
   <p>
-  (Last report: {{ lastreport.strftime("%Y-%m-%d %H:%M:%S") }})
+  (Last report: {{ lastreport.strftime("%Y-%m-%d %H:%M") }})
 
   <noscript><b>Please enable JavaScript to see plots.</b></noscript>
 
   <h2>Daily Rain</h2>
   {% include "rainplot.html" %}
 
-  <h2>Hourly Temperatures</h2>
-  {% include "tempplot.html" %}
+  {% for key, value in hourlydata.items() if key != 't' and key != 'unixtimes'
+     and not key.endswith('min') and not key.endswith('max') %}
+    <h2>Hourly {{ key.replace('_', ' ').title() }}</h2>
+    {% include "hourlyplot.html" %}
+  {% endfor %}
 
 <hr>
 <a href="/stations">Summary</a> |
