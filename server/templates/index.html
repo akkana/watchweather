@@ -1,0 +1,16 @@
+{% extends "base.html" %}
+
+{% block content %}
+
+<p>
+<a href="/stations">Summary of all Stations Reporting</a>
+<p>
+<a href="/details/all">Detailed View of all Stations</a>
+
+<h3>Individual Stations:</h3>
+
+<table class="menu">
+{{ htmlcontent|safe }}
+</table>
+
+{% endblock %}

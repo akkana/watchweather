@@ -14,72 +14,9 @@ import stations
 app = Flask(__name__, static_url_path='')
 
 
-def HTML_header(title, refresh=0, stylesheets=None):
-    """Boilerplate HTML headers
-    """
-
-    if not stylesheets:
-        stylesheets = ["/basic.css"]
-
-    html = """<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
-<html>
-<head>
-<meta http-equiv="content-type" content="text/html; charset=utf-8" />
-<meta name="viewport" content="width=device-width, initial-scale=1">"""
-    if refresh:
-        html += '<meta http-equiv="refresh" content="%d">' % refresh
-    html += """
-<title>%s</title>
-""" % (title)
-    for sheet in stylesheets:
-        html += '<link rel="stylesheet" type="text/css" href="%s" />\n' % sheet
-
-    html += """
-</head>
-
-<body>
-
-<h1>%s</h1>""" % (title)
-
-    return html
-
-
-def HTML_footer(stationname=None):
-    if stationname and stationname != "all":
-        stationdetails = '<a href="/details/%s">%s Station Details</a> |\n' \
-            % (stationname, stationname)
-        stationweekly = '<a href="/weekly/%s">%s Station Week Summary</a> |\n' \
-            % (stationname, stationname)
-        stationweekly = '<a href="/plot/%s">%s Station Plots</a> |\n' \
-            % (stationname, stationname)
-    else:
-        stationdetails = ""
-        stationweekly = ""
-
-    return """
-<hr>
-<a href="/stations">Summary</a> |
-%s<a href="/details/all">All Station Details</a> |
-%s<a href="/">Menu</a>
-</body>
-</html>
-""" % (stationdetails, stationweekly)
-
-
 @app.route('/')
 def home_page():
     stations.initialize()
-
-    html = HTML_header("Watch Weather")
-
-    html += """<p>\n<a href="/stations">Summary of all Stations</a>
-<p>
-<a href="/details/all">Detailed View of all Stations</a>
-
-<h3>Individual Stations:</h3>
-
-<table class="menu">
-"""
 
     today = date.today()
 
@@ -97,14 +34,19 @@ def home_page():
                 % (style, stname, stname, stname, stname,
                    stations.last_station_update[stname])
 
+    htmlcontent = ""
+
     for stname in stations.stations:
-        html += station_row(stname)
+        htmlcontent += station_row(stname)
     for stname in stations.last_station_update:
         if stname not in stations.stations:
-            html += station_row(stname)
+            htmlcontent += station_row(stname)
 
-    html += "</table>\n" + HTML_footer()
-    return html
+    # To pass HTML to a jinja template without escaping it,
+    # the template must use: {{ htmlcontent|safe }}
+    return render_template('index.html',
+                           title="Watchweather: Menu",
+                           htmlcontent=htmlcontent)
 
 
 @app.route('/stations')
@@ -113,11 +55,13 @@ def show_stations():
     """
     stations.initialize()
 
-    html_out = HTML_header("Watchweather: Stations Reporting", refresh=30,
-                           stylesheets=["basic.css", "wrap.css"])
-    html_out += stations.stations_summary()
-    html_out += HTML_footer()
-    return html_out
+    htmlcontent=stations.stations_summary()
+    print(htmlcontent)
+
+    return render_template('stations.html',
+                           title="Watchweather: Stations Reporting",
+                           refresh=30,
+                           htmlcontent=htmlcontent)
 
 
 @app.route('/details/<stationname>')
@@ -136,29 +80,26 @@ def details(stationname):
     else:
         title = "%s Details" % stationname
 
-    html_out = HTML_header(title)
-    html_out += details
-    html_out += HTML_footer(stationname)
-
-    return html_out
+    return render_template('details.html',
+                           title=title,
+                           htmlcontent=details)
 
 
 @app.route('/weekly/<stationname>', methods=['POST', 'GET'])
 def weekly(stationname):
-    """Summarize weekly details for a station"""
+    """Summarize weekly details for a station
+    """
     stations.initialize()
 
     try:
-        details = stations.station_weekly(stationname)
+        htmlcontent = stations.station_weekly(stationname)
     except KeyError as e:
-        details = "No station named %s: %s" % (stationname, e)
+        htmlcontent = "No station named %s: %s" % (stationname, e)
     # XXX maybe add a case that catches other exceptions
 
-    html_out = HTML_header("Weekly report for %s station" % stationname)
-    html_out += details
-    html_out += HTML_footer(stationname)
-
-    return html_out
+    return render_template('details.html',
+                           title="Weekly report for %s station" % stationname,
+                           htmlcontent=htmlcontent)
 
 
 @app.route('/report/<stationname>', methods=['POST', 'GET'])

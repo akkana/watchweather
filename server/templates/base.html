@@ -1,0 +1,43 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<html>
+<head>
+<meta http-equiv="content-type" content="text/html; charset=utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<link rel="stylesheet" type="text/css" href="/basic.css" />
+<link rel="stylesheet" type="text/css" href="/wrap.css" />
+
+{% if refresh %}
+<meta http-equiv="refresh" content="{{ refresh }}">
+{% endif %}
+
+{% if title %}
+<title>{{ title }}</title>
+{% else %}
+<title>Watch Weather</title>
+{% endif %}
+
+</head>
+
+<body>
+
+{% if title %}
+<h1>{{ title }}</h1>
+{% endif %}
+
+{% block content %}
+<!-- - Each page will put its content here: -->
+{% endblock %}
+
+<hr>
+<a href="/">Menu</a>
+| <a href="/stations">All Stations Summary</a>
+| <a href="/details/all">All Station Details</a>
+
+{% if stationname %}
+ | <a href="/details/{{ stationname }}">{{ stationname }} Details</a>
+ | <a href="/weekly/{{ stationname }}">{{ stationname }} Weekly Summary</a>
+ | <a href="/plot/{{ stationname }}">{{ stationname }} Plots</a>
+{% endif %}
+
+</body>
+</html>
