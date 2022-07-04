@@ -147,24 +147,29 @@ def plot(stationname, starttime=None, endtime=None):
     now = datetime.now()
 
     # Set start and end times to what JavaScript needs: unix time * 1000.
-    try:
-        st = datetime.strptime(starttime, '%Y-%m-%dT%H:%M')
-    except:
+    if endtime == 'week':
+        et = today
+    else:
         try:
-            st = datetime.strptime(starttime, '%Y-%m-%d')
+            et = datetime.strptime(endtime, '%Y-%m-%dT%H:%M')
         except:
-            st = today - timedelta(days=30)
-
-    starttime = mktime(st.timetuple()) * 1000
-    try:
-        et = datetime.strptime(endtime, '%Y-%m-%dT%H:%M')
-    except:
-        try:
-            et = datetime.strptime(endtime, '%Y-%m-%d')
-        except:
-            et = now
-
+            try:
+                et = datetime.strptime(endtime, '%Y-%m-%d')
+            except:
+                et = now
     endtime = mktime(et.timetuple()) * 1000
+
+    if starttime == 'week':
+        st = et - timedelta(days=7)
+    else:
+        try:
+            st = datetime.strptime(starttime, '%Y-%m-%dT%H:%M')
+        except:
+            try:
+                st = datetime.strptime(starttime, '%Y-%m-%d')
+            except:
+                st = today - timedelta(days=30)
+    starttime = mktime(st.timetuple()) * 1000
     # Now st and et are datetimes, starttime and endtime are unix time.
 
     # Plotting a daily value is easy
