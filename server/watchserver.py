@@ -27,7 +27,8 @@ def home_page():
 
     def station_row(stname):
         if (stname not in stations.last_station_update or
-            now - stations.last_station_update[stname] > timedelta(days=7)):
+            now - stations.to_datetime(stations.last_station_update[stname])
+            > timedelta(days=7)):
             style = "historic"
         else:
             style = "current"
@@ -50,7 +51,7 @@ def home_page():
     # To pass HTML to a jinja template without escaping it,
     # the template must use: {{ htmlcontent|safe }}
     return render_template('index.html',
-                           title="Watchweather: Menu",
+                           title="Watch Weather: Menu",
                            htmlcontent=htmlcontent)
 
 

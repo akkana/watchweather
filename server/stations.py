@@ -215,7 +215,7 @@ def update_station(station_name, station_data):
         field_order_fmt = field_order
 
     # Make sure it's also in last_station_update
-    last_station_update[station_name] = to_date(stations[station_name]['time'])
+    last_station_update[station_name] = to_day(stations[station_name]['time'])
 
     if savedir:
         # files are named clientname-YYYY-MM-DD
