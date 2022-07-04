@@ -27,9 +27,11 @@ const {{ key }}Chart = new Chart({{ key }}ctx, {
                         {% endif %}
                     {% endfor %}
                 ],
+                //pointStyle: 'rect',
                 pointRadius: 0,
                 // borderColor: the color of the line
-                borderColor: "black",
+                borderColor: "red",
+
                 // backgroundColor: coloring in each circle, if using circles
                 // backgroundColor: "blue",
             },
@@ -43,7 +45,7 @@ const {{ key }}Chart = new Chart({{ key }}ctx, {
           time: {
             unit: 'day',
             displayFormats: {
-              hour: 'D-M-Y'         // can append  H:00:00
+              hour: 'D-M-Y'         // could append  H:00:00
             },
             tooltipFormat: 'D-M-Y'  // <-- same format for tooltip
           }
@@ -53,10 +55,20 @@ const {{ key }}Chart = new Chart({{ key }}ctx, {
           max: {{ hourlydata['%s_max' % key] }}
         }
       },
-      // Next two options are needed in order for .chart-container CSS to work
+
+      plugins: {
+        legend: {
+          labels: {
+            usePointStyle: true,
+            pointStyle: 'line'
+          }
+        }
+      },
+
+      // Next two options are needed in order to size .chart-container in CSS
       responsive: true,
       maintainAspectRatio: false
     }
-  });
+});
 
     </script>
