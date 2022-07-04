@@ -36,6 +36,25 @@ const {{ key }}Chart = new Chart({{ key }}ctx, {
                 // backgroundColor: "blue",
             },
             {% endif %}
+            {% if key == 'gust_speed' and 'max_gust' in hourlydata %}
+            {
+                type: 'line',
+                label: "max_gust",
+                data: [
+	            {% for item in hourlydata['max_gust'] %}
+                        {% if item == None %}
+                            null,
+                        {% else %}
+                            {{ item }},
+                        {% endif %}
+                    {% endfor %}
+                ],
+                //pointStyle: 'rect',
+                pointRadius: 0,
+                // borderColor: the color of the line
+                borderColor: 'rgba(0, 0, 255, .3)',
+            },
+            {% endif %}
           ],
      },
     options: {

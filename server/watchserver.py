@@ -149,7 +149,8 @@ def plot(stationname):
     # More granular values may need resampling
     hourlydata = stations.read_csv_data_resample(stationname, ['temperature',
                                                                'humidity',
-                                                               'gust_speed'],
+                                                               'gust_speed',
+                                                               'max_gust'],
                                                  today - timedelta(days=30),
                                                  now,
                                                  timedelta(hours=1))
@@ -171,7 +172,10 @@ def plot(stationname):
     set_chart_maxmin(dailydata, 'rain_daily', .1)
     set_chart_maxmin(hourlydata, 'temperature', 1)
     set_chart_maxmin(hourlydata, 'humidity', 1)
-    set_chart_maxmin(hourlydata, 'gust_speed', 1)
+    # set_chart_maxmin(hourlydata, 'gust_speed', 1)
+    set_chart_maxmin(hourlydata, 'max_gust', 1)
+    hourlydata['gust_speed_min'] = hourlydata['max_gust_min']
+    hourlydata['gust_speed_max'] = hourlydata['max_gust_max']
 
     # chart.js needs Unix times * 1000 to feed to JavaScript's Date class.
     dailydata['unixtimes'] = [ mktime(d.timetuple()) * 1000

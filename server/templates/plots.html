@@ -32,8 +32,9 @@
     ]
   </script>
 
-  {% for key, value in hourlydata.items() if key != 't' and key != 'unixtimes'
-     and not key.endswith('min') and not key.endswith('max') %}
+  {% for key, value in hourlydata.items()
+         if key != 't' and key != 'unixtimes' and key != 'max_gust'
+         and not key.endswith('min') and not key.endswith('max') %}
     <h2>Hourly {{ key.replace('_', ' ').title() }}</h2>
     {% include "hourlyplot.html" %}
   {% endfor %}
