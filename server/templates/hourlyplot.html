@@ -11,7 +11,7 @@ const {{ key }}ctx = document.querySelector('#{{ key }}Chart').getContext('2d');
 
 const {{ key }}Chart = new Chart({{ key }}ctx, {
     data: {
-        labels: timeLabels,
+        labels: hourlyTimeLabels,
         datasets: [
             // First dataset displays on top
             {% if key in hourlydata %}

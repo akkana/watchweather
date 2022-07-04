@@ -132,27 +132,52 @@ def report(stationname):
     return retstr
 
 
-@app.route('/plot/<stationname>', methods=['POST', 'GET'])
-def plot(stationname):
+@app.route('/plot/<stationname>')
+@app.route('/plot/<stationname>/<starttime>')
+@app.route('/plot/<stationname>/<starttime>/<endtime>')
+def plot(stationname, starttime=None, endtime=None):
     """Plot weather for a station.
-       Currently only plots rain.
+       By default, print the last 30 days, unless starttime and endtime are set.
+       If only startime is specified, run from starttime to now.
+       All times specified as yyyy-mm-dd or yyyy-mm-ddTHH:MM
     """
     stations.initialize()
 
     today = date.today()
     now = datetime.now()
 
+    # Set start and end times to what JavaScript needs: unix time * 1000.
+    try:
+        st = datetime.strptime(starttime, '%Y-%m-%dT%H:%M')
+    except:
+        try:
+            st = datetime.strptime(starttime, '%Y-%m-%d')
+        except:
+            st = today - timedelta(days=30)
+
+    starttime = mktime(st.timetuple()) * 1000
+    try:
+        et = datetime.strptime(endtime, '%Y-%m-%dT%H:%M')
+    except:
+        try:
+            et = datetime.strptime(endtime, '%Y-%m-%d')
+        except:
+            et = now
+
+    endtime = mktime(et.timetuple()) * 1000
+    # Now st and et are datetimes, starttime and endtime are unix time.
+
     # Plotting a daily value is easy
     dailydata = stations.read_daily_data(stationname, ['rain_daily'],
-                                         today - timedelta(days=30), today)
+                                         st, et)
 
     # More granular values may need resampling
-    hourlydata = stations.read_csv_data_resample(stationname, ['temperature',
-                                                               'humidity',
-                                                               'gust_speed',
-                                                               'max_gust'],
-                                                 today - timedelta(days=30),
-                                                 now,
+    hourlydata = stations.read_csv_data_resample(stationname,
+                                                 ['temperature',
+                                                  'humidity',
+                                                  'gust_speed',
+                                                  'max_gust'],
+                                                 st, et,
                                                  timedelta(hours=1))
 
     # charts.js can't do auto scaling, and jinja can't do max, so
@@ -177,15 +202,10 @@ def plot(stationname):
     hourlydata['gust_speed_min'] = hourlydata['max_gust_min']
     hourlydata['gust_speed_max'] = hourlydata['max_gust_max']
 
-    # chart.js needs Unix times * 1000 to feed to JavaScript's Date class.
-    dailydata['unixtimes'] = [ mktime(d.timetuple()) * 1000
-                               for d in dailydata['t'] ]
-    hourlydata['unixtimes'] = [ mktime(d.timetuple()) * 1000
-                                for d in hourlydata['t'] ]
-
     return render_template('plots.html',
                            stationname=stationname,
                            lastreport=stations.last_station_update[stationname],
+                           starttime=starttime, endtime=endtime,
                            dailydata=dailydata,
                            hourlydata=hourlydata)
 

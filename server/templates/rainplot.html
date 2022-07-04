@@ -7,19 +7,13 @@
 // With moment.js you can also do things like:
 // const startDate = moment().subtract(1, 'd');
 
-const rainTimeLabels = [
-{% for t in dailydata['unixtimes'] %}
-     new Date( {{ t }} ),
-{% endfor %}
-];
-
-// console.log("labels:", rainTimeLabels);
+// console.log("labels:", dailyTimeLabels);
 
 const rainctx = document.querySelector('#rainChart').getContext('2d');
 
 const rainChart = new Chart(rainctx, {
     data: {
-        labels: rainTimeLabels,
+        labels: dailyTimeLabels,
         datasets: [
             // First dataset displays on top
             {% if 'rain_event' in dailydata %}

@@ -19,18 +19,28 @@
 
   <noscript><b>Please enable JavaScript to see plots.</b></noscript>
 
-  <h2>Daily Rain</h2>
-  {% include "rainplot.html" %}
-
   <script>
     // Only need one set of hourly time labels,
     // which will be shared across all hourly plots.
-    var timeLabels = [
-        {% for t in hourlydata['unixtimes'] %}
-        new Date( {{ t }} ),
-        {% endfor %}
-    ]
+
+    var startTime = new Date({{ starttime }});
+    var endTime = new Date({{ endtime }});
+    var onehour = 1000*60*60;  // one hour in milliseconds
+    var oneday = onehour * 24;
+    var hourlyTimeLabels = [];
+    for (var t=startTime.getTime(); t <= endTime.getTime(); t += onehour) {
+        // New Date object each time.
+        hourlyTimeLabels.push(new Date(t));
+    }
+    var dailyTimeLabels = [];
+    for (var t=startTime.getTime(); t <= endTime.getTime(); t += oneday) {
+        // New Date object each time.
+        dailyTimeLabels.push(new Date(t));
+    }
   </script>
+
+  <h2>Daily Rain</h2>
+  {% include "rainplot.html" %}
 
   {% for key, value in hourlydata.items()
          if key != 't' and key != 'unixtimes' and key != 'max_gust'
