@@ -186,6 +186,16 @@ def plot(stationname, starttime=None, endtime=None):
                                                  st, et,
                                                  timedelta(hours=1))
 
+    # chart.js needs Unix times * 1000 to feed to JavaScript's Date class.
+    # I know it's tempting to give start and end time and let
+    # the JS calculate it. But then the data can get out of sync
+    # with the time. It's much easier to generate them from the
+    # same function (in this case, read_csv_data_resample).
+    dailydata['unixtimes'] = [ mktime(d.timetuple()) * 1000
+                               for d in dailydata['t'] ]
+    hourlydata['unixtimes'] = [ mktime(d.timetuple()) * 1000
+                                for d in hourlydata['t'] ]
+
     # charts.js can't do auto scaling, and jinja can't do max, so
     # calculate it here, rounded up to multiples of roundoff.
     def set_chart_maxmin(data, key, roundoff=1):

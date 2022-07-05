@@ -634,6 +634,8 @@ def read_csv_data_resample(stationname, valtypes,
     t0 = to_datetime(start_time)
     t = t0
     t1 = t0 + time_incr
+    end_day = to_day(end_time)
+
     csvreader = None
     day = None
     datafp = None
@@ -642,26 +644,30 @@ def read_csv_data_resample(stationname, valtypes,
         if not csvreader:
             if datafp:
                 datafp.close()
-            day = to_day(t0)
+
+            # Prepare to read the next day's data
+            if not day:
+                day = to_day(start_time)
+            # If day (from the previous iteration) >= end_day,
+            # then the last file has already been read.
+            elif day >= end_day:
+                break
+            else:
+                day += timedelta(days=1)
+
+            # Otherwise, try to open the next day's file.
             daystr = day.strftime("%Y-%m-%d")
             datafile = os.path.join(savedir,
                                     "%s-%s.csv" % (stationname, daystr))
-
             try:
                 datafp = open(datafile)
                 csvreader = csv.DictReader(datafp)
+                t0 = to_datetime(max(to_datetime(day), start_time))
             except FileNotFoundError:
+                # That means there's no data for this day,
+                # so skip to the next day
                 print("Skipping", day, ": no data file", sys.stderr)
                 csvreader = None
-
-                # That means there's no data for this day,
-                # so skip forward a day.
-                t0 = to_datetime(day) + timedelta(days=1)
-                if t0 >= end_time:
-                    break
-                t1 = t0 + time_incr
-                if t1 > end_time:
-                    t1 = end_time
                 continue
 
         # Now there's definitely a csvreader object

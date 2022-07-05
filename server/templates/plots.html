@@ -20,23 +20,18 @@
   <noscript><b>Please enable JavaScript to see plots.</b></noscript>
 
   <script>
-    // Only need one set of hourly time labels,
+    // Only need one set of hourly time labels and one set of daily,
     // which will be shared across all hourly plots.
-
-    var startTime = new Date({{ starttime }});
-    var endTime = new Date({{ endtime }});
-    var onehour = 1000*60*60;  // one hour in milliseconds
-    var oneday = onehour * 24;
-    var hourlyTimeLabels = [];
-    for (var t=startTime.getTime(); t <= endTime.getTime(); t += onehour) {
-        // New Date object each time.
-        hourlyTimeLabels.push(new Date(t));
-    }
-    var dailyTimeLabels = [];
-    for (var t=startTime.getTime(); t <= endTime.getTime(); t += oneday) {
-        // New Date object each time.
-        dailyTimeLabels.push(new Date(t));
-    }
+    var hourlyTimeLabels = [
+      {% for t in hourlydata['unixtimes'] %}
+        new Date( {{ t }} ),
+      {% endfor %}
+    ]
+    var dailyTimeLabels = [
+      {% for t in dailydata['unixtimes'] %}
+        new Date( {{ t }} ),
+      {% endfor %}
+    ]
   </script>
 
   <h2>Daily Rain</h2>

@@ -75,7 +75,7 @@ class ResampleTest(unittest.TestCase):
                                    datetime(2022, 6, 26, 0, 20),
                                    datetime(2022, 6, 26, 0, 40),
                                    datetime(2022, 6, 26, 1, 0)],
-                             'temperature': [53.0, 52.9205, 53.085, 53.1]
+                             'temperature': [None, 52.92, 53.085, 53.1]
                          })
 
         # test second file missing
@@ -88,7 +88,7 @@ class ResampleTest(unittest.TestCase):
                          {
                              't': [datetime(2022, 6, 27, 23, 0),
                                    datetime(2022, 6, 27, 23, 20),
-                                   datetime(2022, 6, 29, 0, 0)],
+                                   datetime(2022, 6, 28, 0, 0)],
                              'temperature': [53.5385, 52.86, 52.55]
                          })
 
