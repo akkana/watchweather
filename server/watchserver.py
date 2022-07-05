@@ -221,6 +221,7 @@ def plot(stationname, starttime=None, endtime=None):
 
     return render_template('plots.html',
                            stationname=stationname,
+                           title="Weather Data for %s Station" % stationname,
                            lastreport=stations.last_station_update[stationname],
                            starttime=starttime, endtime=endtime,
                            dailydata=dailydata,

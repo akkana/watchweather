@@ -1,20 +1,12 @@
-<!DOCTYPE html>
-<html>
-<head>
-  <meta http-equiv="content-type" content="text/html; charset=utf-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1">
+{% extends "base.html" %}
 
-  <title>{{ title }}</title>
-
-  <link rel="stylesheet" type="text/css" href="/basic.css" />
-
+{% block header_items %}
   <script src="/chart.min.js"></script>
   <script src="/chartjs-adapter-date-fns.bundle.min.js"></script>
+{% endblock %}
 
-</head>
+{% block content %}
 
-<body>
-  <h1>Weather data for {{ stationname }} station</h1>
   <p>
   (Last report: {{ lastreport.strftime("%Y-%m-%d %H:%M") }})
   <ul id="timechooser" class="buttons">
@@ -32,8 +24,14 @@
         a = button.getElementsByTagName('a')[0];
         if (a.href == document.location) {
             a.style.color = '#666';
+            button.classList.add('pushed');
             button.style.color = 'red';
             button.style.borderStyle = 'inset';
+            title = document.title + " (" + a.innerHTML + ")";
+            document.title = title;
+            titleh1 = document.querySelectorAll('h1.title')[0];
+            if (titleh1)
+                titleh1.innerHTML = title;
         }
     }
 
@@ -61,12 +59,4 @@
     {% include "hourlyplot.html" %}
   {% endfor %}
 
-<hr>
-<a href="/stations">Summary</a> |
-<a href="/details/{{ stationname }}">{{ stationname }} Details</a> |
-<a href="/weekly/{{ stationname }}">{{ stationname }} Weekly Summary</a> |
-<a href="/details/all">All Station Details</a> |
-<a href="/">Menu</a>
-
-</body>
-</html>
+{% endblock %}

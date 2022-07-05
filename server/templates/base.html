@@ -6,6 +6,11 @@
 <link rel="stylesheet" type="text/css" href="/basic.css" />
 <link rel="stylesheet" type="text/css" href="/wrap.css" />
 
+<!-- For anything else you need in the header, use block header_items:
+     see example in plot.html.
+  -->
+{% block header_items %}{% endblock %}
+
 {% if refresh %}
 <meta http-equiv="refresh" content="{{ refresh }}">
 {% endif %}
@@ -21,7 +26,7 @@
 <body>
 
 {% if title %}
-<h1>{{ title }}</h1>
+<h1 class="title">{{ title }}</h1>
 {% endif %}
 
 {% block content %}

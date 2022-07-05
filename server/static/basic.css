@@ -39,6 +39,10 @@ table.menu th, table.menu td { padding: .4em; }
   background-color: #bff;
 }
 
+.buttons li.pushed {
+  background-color: #eff;
+}
+
 .buttons:after {
   clear:both;
   content:"";

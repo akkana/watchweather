@@ -39,7 +39,7 @@ class ServerTests(unittest.TestCase):
     def test_main_page(self):
         rv = self.app.get('/', follow_redirects=True)
         self.assertEqual(rv.status_code, 200)
-        assert b'<h1>Watch Weather: Menu</h1>' in rv.data
+        assert b'<h1 class="title">Watch Weather: Menu</h1>' in rv.data
 
     def test_without_config(self):
         rv = self.app.get('/', follow_redirects=True)
@@ -63,7 +63,7 @@ class ServerTests(unittest.TestCase):
         # Make sure there's a details page for it
         rv = self.app.get('/details/UnitTest')
         self.assertEqual(rv.status_code, 200)
-        assert b'<h1>UnitTest Details</h1>' in rv.data
+        assert b'<h1 class="title">UnitTest Details</h1>' in rv.data
         assert b'<td>Temperature\n<td class="val">85.0<tr>' in rv.data
 
 
