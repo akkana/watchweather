@@ -105,6 +105,7 @@ def weekly(stationname):
 
     return render_template('details.html',
                            title="Weekly report for %s station" % stationname,
+                           stationname=stationname,
                            htmlcontent=htmlcontent)
 
 

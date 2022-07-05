@@ -3,23 +3,40 @@
 <head>
   <meta http-equiv="content-type" content="text/html; charset=utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1">
+
   <title>{{ title }}</title>
 
   <link rel="stylesheet" type="text/css" href="/basic.css" />
 
   <script src="/chart.min.js"></script>
-  <script src="/moment.min.js"></script>
-  <script src="/chartjs-adapter-moment.js"></script>
+  <script src="/chartjs-adapter-date-fns.bundle.min.js"></script>
+
 </head>
 
 <body>
-  <h1>Weather data for {{ stationname }}</h1>
+  <h1>Weather data for {{ stationname }} station</h1>
   <p>
   (Last report: {{ lastreport.strftime("%Y-%m-%d %H:%M") }})
+  <ul id="timechooser" class="buttons">
+    <li><a href="/plot/{{ stationname }}/week">Past Week</a>
+    <li><a href="/plot/{{ stationname }}">Past Month</a>
+  </ul>
 
   <noscript><b>Please enable JavaScript to see plots.</b></noscript>
 
   <script>
+    // grey out any time button representing the current page
+    var timechooser = document.getElementById("timechooser");
+    const buttons = timechooser.getElementsByTagName('li');
+    for (const button of buttons) {
+        a = button.getElementsByTagName('a')[0];
+        if (a.href == document.location) {
+            a.style.color = '#666';
+            button.style.color = 'red';
+            button.style.borderStyle = 'inset';
+        }
+    }
+
     // Only need one set of hourly time labels and one set of daily,
     // which will be shared across all hourly plots.
     var hourlyTimeLabels = [

@@ -13,3 +13,34 @@ table.menu th, table.menu td { padding: .4em; }
  */
 .chart-container { width: 95%; height: 300px !important; }
 
+/* A ul displayed as buttons for choosing time periods */
+.buttons li a {
+  text-decoration: none;
+  color: black;
+  display: block;
+}
+
+.buttons li {
+  float: left;
+  list-style: none;
+  text-align: center;
+  background-color: #bdf;
+  margin-right: 20px;
+  width: 9em;
+  line-height: 1.7em;
+  border-radius: 1em;
+  border-width: 1px;
+  border-style: outset;
+  border-color: black;
+}
+
+.buttons li:hover {
+  text-decoration: none;
+  background-color: #bff;
+}
+
+.buttons:after {
+  clear:both;
+  content:"";
+  display: table;
+}
