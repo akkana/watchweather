@@ -631,6 +631,8 @@ def read_csv_data_resample(stationname, valtypes,
 
             statdata[vt].reset()
 
+    start_time = to_datetime(start_time)
+    end_time = to_datetime(end_time)
     t0 = to_datetime(start_time)
     t = t0
     t1 = t0 + time_incr
