@@ -467,15 +467,20 @@ def station_weekly(stationname):
                         }
         # For some fields, lows are meaningless, it's always zero
         highs_only = ("average_wind", "gust_speed")
-        with open(datafilename, "r") as datafp:
-            reader = csv.DictReader(datafp)
-            for row in reader:
-                for f in highlowfields:
-                    try:
-                        val = float(row[f])
-                    except:
-                        continue
-                    highlowfields[f].accumulate(val)
+        try:
+            with open(datafilename, "r") as datafp:
+                reader = csv.DictReader(datafp)
+                for row in reader:
+                    for f in highlowfields:
+                        try:
+                            val = float(row[f])
+                        except:
+                            continue
+                        highlowfields[f].accumulate(val)
+        except FileNotFoundError:
+            print("No file on", datafilename, file=sys.stderr)
+            day += timedelta(days=1)
+            continue
 
         # The last row contains the rainfall for the day
         if 'rain_daily' in row and row['rain_daily']:
