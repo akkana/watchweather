@@ -2,6 +2,25 @@
 
 {% block content %}
 
-{{ htmlcontent|safe }}
+<table class="details">
+
+<tr><th></th>
+{% for stationname in showstations %}
+  <th class="val">{{ stationname }}</td>
+{% endfor %}
+
+{% for field in field_order %}
+<tr><th>{{ field | prettyname }}</th>
+  {% for stationname in showstations %}
+    {% if field in showstations[stationname] %}
+      <td class="val">{{ showstations[stationname][field] | prettydata }}</td>
+    {% else %}
+      <td>&nbsp;</td>
+    {% endif %}
+  {% endfor %}
+</tr>
+{% endfor %}
+
+</table>
 
 {% endblock %}

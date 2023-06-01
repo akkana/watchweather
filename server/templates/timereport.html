@@ -1,0 +1,22 @@
+{% extends "base.html" %}
+
+{% block content %}
+
+<table class="details"><tbody>
+<tr>
+{% for field in data[0] %}
+  <th>{{ field | prettyname }}</th>
+{% endfor %}
+
+{% for daydata in data %}
+  <tr>
+  {% for field in data[0] %}
+    <td>{{ daydata[field] | prettydata(field) }}
+  {% endfor %}
+  </tr>
+{% endfor %}
+
+</tbody></table>
+
+{% endblock %}
+

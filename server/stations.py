@@ -96,8 +96,10 @@ def initialize(expiration=None, savedir_path=None):
                     with open(os.path.join(savedir, csvfilename)) as csvfp:
                         reader = csv.DictReader(csvfp)
                         for row in reader:
-                            pass
+                            pass    # ignore everything but the last row
+                                    # XXX this should be done more efficiently
 
+                    # Populate with the values from the last row
                     stations[stationname] = {}
                     for field in row:
                         if field == 'time':
@@ -127,12 +129,6 @@ def initialize(expiration=None, savedir_path=None):
     # populate_bogostations(5)
 
     initialized = True
-
-
-def prettify(field):
-    """Convert a field in the data into a user-visible field
-    """
-    return field.replace('_', ' ').title()
 
 
 def populate_bogostations(nstations):
@@ -264,135 +260,17 @@ def prune_stations():
         del stations[d]
 
 
-def stations_summary():
-    """Return an HTML string representing all the reporting stations.
-       Only show temperature, humidity and rain_daily.
-       XXX Eventually make this configurable.
-    """
-    outstr = ''
-    showkeys = [ 'temperature', 'humidity', 'rain_daily' ]
+def get_field_order():
+    if field_order_fmt:
+        return field_order_fmt
 
+    fields = []
     for stname in stations:
-        st = stations[stname]
+        for f in stations[stname]:
+            if f not in fields:
+                fields.append(f)
 
-        outstr += """
-<fieldset class="stationbox">
-
-<legend>%s</legend>
-
-<table class="datatable">
-<tr>
-""" % (stname)
-
-        # keys = list(st.keys())
-
-        # Keep the keys always in the same order.
-        # Generally we want temperature first, so as a TEMPORARY measure,
-        # use reverse sort. XXX Be smarter about order.
-        # keys.sort(reverse=True)
-
-        for key in showkeys:
-            if key in st and st[key]:
-                outstr += '  <td>%s\n' % key
-
-        outstr += '<tr class="bigdata">'
-
-        for key in showkeys:
-            if key in st:
-                # val = parse(st[key])
-                val = st[key]
-
-                if not val:
-                    continue
-
-                # Format floats to one decimal place,
-                # except for rain which gets two.
-                if type(val) is float:
-                    if key == 'rain_daily':
-                        strval = '%.2f' % val
-                    else:
-                        strval = '%.1f' % val
-                else:
-                    strval = str(val)
-
-                # However, if it's a floating point, chances are it has
-                # way too many decimal places. To avoid depending on all
-                # modules to do that properly, guard against it here.
-                outstr += '  <td>%s\n' % strval
-
-        if 'time' in st:
-            # Time will also likely need reformatting.
-            # d = parse(st['time'])
-            d = st['time']
-            outstr += '<tr><td colspan=10>Last updated: %s' \
-                                        % d.strftime('%H:%M')
-
-        outstr += '</table>\n'
-        outstr += '\n</fieldset>\n'
-
-    return outstr
-
-
-def station_details(stationname):
-    """Show details for just one station"""
-
-    fields = field_order_fmt
-
-    html_out = '<table class="details">'
-    extra_fields = ''
-    # st = stations[stationname]
-    if stationname == 'all':
-        nstations = len(stations)
-        showstations = stations
-        html_out += '<tr><td class="station_name">'
-        for stname in showstations:
-            html_out += '<th class="val">%s' % (stname)
-    else:
-        nstations = 1
-        showstations = { stationname: stations[stationname] }
-
-    # If there was no fields file, just show all the fields we have,
-    # in undefined order
-    if not fields:
-        fields = []
-        for stname in showstations:
-            for f in showstations[stname]:
-                if f not in fields:
-                    fields.append(f)
-
-    # Collect the fields specified in field_order.
-    for field in fields:
-        if not field:
-            html_out += '<tr><td colspan=%d>&nbsp;' % (nstations+1)
-            continue
-
-        html_out += '<tr>\n'
-        html_out += '<td>%s\n' % prettify(field)
-        for stname in showstations:
-            st = showstations[stname]
-
-            # Not all stations have all fields, so be prepared
-            # for a KeyError:
-            try:
-                # Time should normally be datetime.
-                # Rewrite time to get rid of decimal seconds
-                # that would appear if we just did a string conversion:
-                if field == 'time' and hasattr(st[field], 'strftime'):
-                    valstr = st[field].strftime("%Y-%m-%d %H:%M:%S")
-                elif type(st[field]) is float:
-                    if field.startswith('rain'):
-                        valstr = '%.2f' % st[field]
-                    else:
-                        valstr = '%.1f' % st[field]
-                else:
-                    valstr = str(st[field])
-
-                html_out += '<td class="val">%s' % valstr
-            except KeyError:
-                html_out += '<td class="val">&nbsp;'
-
-    html_out += '</table>'
-    return html_out
+    return fields
 
 
 class StatFields:
@@ -435,7 +313,9 @@ high:    %.2f""" % (self.total, self.n, self.average(), self.low, self.high)
 
 
 def station_weekly(stationname):
-    """Show a weekly summary for one station"""
+    """Build a weekly summary for one station.
+       Return a list of dictionaries, keys "date", "Temperature Low", etc.
+    """
     if not savedir:
         raise RuntimeError("No data dir, can't show a weekly summary")
 
@@ -447,6 +327,8 @@ def station_weekly(stationname):
     # Fields that don't need any statistics: just take the last number.
     fields = ["rain_daily", "rain_event", "rain_monthly", "rain_yearly"]
 
+    ret = []
+
     # A rainfall "event" means rain that has occurred without a break
     # of 24 hours or more. But that's tricky to calculate since the
     # most granular field is rain_hourly. So just use the last rain_daily
@@ -455,7 +337,6 @@ def station_weekly(stationname):
     last_rain_day = date(1970, 1, 1)
 
     # clientname-YYYY-MM-DD
-    html = ""
     while day <= lastdate:
         daystr = day.strftime("%Y-%m-%d")
         datafilename = os.path.join(savedir,
@@ -471,12 +352,13 @@ def station_weekly(stationname):
             with open(datafilename, "r") as datafp:
                 reader = csv.DictReader(datafp)
                 for row in reader:
-                    for f in highlowfields:
+                    for f in row:
                         try:
-                            val = float(row[f])
+                            row[f] = float(row[f])
+                            if f in highlowfields:
+                                highlowfields[f].accumulate(row[f])
                         except:
                             continue
-                        highlowfields[f].accumulate(val)
         except FileNotFoundError:
             print("No file on", datafilename, file=sys.stderr)
             day += timedelta(days=1)
@@ -492,50 +374,31 @@ def station_weekly(stationname):
             rainfall_event = 0.
         row["rain_event"] = rainfall_event
 
-        # Ready to output this day
+        curdic = { "date": str(day) }
 
-        # First the table start, if it hasn't been added already:
-        if not html:
-            html = "\n<table class=\"details\"><tbody>\n<tr><th>Day "
-            for f in fields:
-                html += "<th>%s " % prettify(f)
-            for f in highlowfields:
-                if f not in highs_only:
-                    html += "<th>%s<br>Low " % prettify(f)
-                html += "<th>%s<br>High " % prettify(f)
-            html += "</tr>\n"
-
-        html += "<tr><td>%s " % str(day)
-
-        # take "fields" from only the last row,
+        # take "fields" from only the day's last row
         for f in fields:
             if f in row and row[f]:
-                html += "<td>%.2f" % float(row[f])
+                curdic[f] = row[f]
             else:
-                html += "<td>&nbsp;"
+                curdic[f] = None
 
         for f in highlowfields:
             if f not in highs_only:
                 if highlowfields[f].low < sys.maxsize:
-                    html += "<td>%.1f" % highlowfields[f].low
+                    curdic[f + " Low"] = highlowfields[f].low
                 else:
-                    html += "<td>&nbsp;"
+                    curdic[f + " Low"] = None
             if highlowfields[f].high > 0:
-                html += "<td>%.1f" % highlowfields[f].high
+                curdic[f + " High"] = highlowfields[f].high
             else:
-                html += "<td>&nbsp;"
-        html += "\n"
+                curdic[f + " High"] = None
+
+        ret.append(curdic)
 
         day += timedelta(days=1)
 
-    html += "</tbody></table>\n"
-    return html
-
-
-def read_csv_file(filename):
-    with open(filename, "r") as datafp:
-        reader = csv.DictReader(datafp)
-        return [ row for row in reader ]
+    return ret
 
 
 #
@@ -697,7 +560,7 @@ def read_csv_data_resample(stationname, valtypes,
 
             t0 += time_incr
             t1 = t0 + time_incr
-            if t1 > end_time:
+            if not t1 or t1 > end_time:
                 t1 = end_time
 
         # Whether a new interval or old, accumulate this row.

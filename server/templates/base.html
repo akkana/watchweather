@@ -29,6 +29,18 @@
 <h1 class="title">{{ title }}</h1>
 {% endif %}
 
+{% with messages = get_flashed_messages() %}
+{% if messages %}
+  <div class="error">
+    <ul>
+      {% for message in messages %}
+        <li>{{ message }}</li>
+      {% endfor %}
+    </ul>
+  </div>
+{% endif %}
+{% endwith %}
+
 {% block content %}
 <!-- - Each page will put its content here: -->
 {% endblock %}

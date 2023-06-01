@@ -68,13 +68,6 @@ Run a single report by specifying which module you want to use, e.g.:
 client/stationreport.py "Sensor Location" servername Si7021
 ```
 
-If you don't have any sensors yet and just want to test the server,
-you can add some stations using 'test' as the sensor name:
-```
-client/stationreport.py Nearby localhost testclient
-client/stationreport.py 'Far away' localhost testclient
-```
-
 If your sensors are reporting correctly, you can make reports in a loop,
 like this:
 
@@ -154,4 +147,20 @@ To fix that, go to about:config, search for *refresh* and if
 change it to false. Supposedly the default is false but something is
 changing it to true for me and a lot of people on the web.
 
+## Testing
 
+If you don't have any sensors yet and just want to test the server,
+you can add some dummy station data using 'test' as the sensor name:
+```
+client/stationreport.py Nearby localhost testclient
+client/stationreport.py 'Far away' localhost testclient
+```
+
+If you have a running instance on a server, with stored data, and you
+want to test a local instance against that data, just copy the data over.
+For instance, if you're running watchweather on a production server and
+caching data in /var/www/watchweather/.cache, and locally you're using
+the default of ~/.cache/watchweather, then:
+```
+rsync -av servername:/var/www/watchweather/.cache/watchserver/
+```

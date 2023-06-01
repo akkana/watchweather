@@ -2,6 +2,35 @@
 
 {% block content %}
 
-{{ htmlcontent|safe }}
+{% for stname in showstations %}
+  <fieldset class="stationbox">
+
+  <legend>{{ stname }}</legend>
+
+  <table class="datatable">
+  <tr>
+  {% for key in showkeys %}
+    {% if key in showstations[stname] and showstations[stname][key] %}
+      <td>{{ key }}</td>
+    {% endif %}
+  {% endfor %}
+  </tr>
+
+  <tr class="bigdata">
+  {% for key in showkeys %}
+    {% if key in showstations[stname] and showstations[stname][key] %}
+      <td>{{ showstations[stname][key] | prettydata(key, True) }}</td>
+    {% endif %}
+  {% endfor %}
+  </tr>
+
+  <tr><td colspan=10>Updated: {{ showstations[stname]['time'].strftime("%a %b %d %H:%M") }}
+  &bull; <a href="/details/{{ stname }}">details</a>
+  &bull; <a href="/plot/{{ stname }}">plots</a></td></tr>
+
+  </table>
+  </fieldset>
+
+{% endfor %}
 
 {% endblock %}

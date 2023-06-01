@@ -64,7 +64,8 @@ class ServerTests(unittest.TestCase):
         rv = self.app.get('/details/UnitTest')
         self.assertEqual(rv.status_code, 200)
         assert b'<h1 class="title">UnitTest Details</h1>' in rv.data
-        assert b'<td>Temperature\n<td class="val">85.0<tr>' in rv.data
+        assert b'<tr><th>Temperature</th>\n      <td class="val">85.0</td>' \
+            in rv.data
 
 
 if __name__ == '__main__':

@@ -48,3 +48,5 @@ table.menu th, table.menu td { padding: .4em; }
   content:"";
   display: table;
 }
+
+.error { color: red; }

@@ -10,7 +10,17 @@
 <h3>Individual Stations:</h3>
 
 <table class="menu">
-{{ htmlcontent|safe }}
+{% for stname in stations %}
+
+<tr class="{{ style }}"><th>{{ stname }}<th>
+  <td><a href="/details/{{ stname }}">Details</a></td>
+  <td><a href="/weekly/{{ stname }}">Weekly</a></td>
+  <td><a href="/plot/{{ stname }}">Plots</a></td>
+  <td>(last updated {{ stations[stname].time.strftime("%H:%M %a %b %d %Y") }})</td>
+</tr>
+
+{% endfor %}
+
 </table>
 
 {% endblock %}

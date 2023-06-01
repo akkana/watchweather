@@ -4,7 +4,7 @@ from datetime import datetime, date, timedelta
 from time import mktime
 from math import ceil, floor
 
-from flask import Flask, request, url_for, render_template
+from flask import Flask, request, url_for, render_template, redirect, flash
 
 # The code to keep track of our reporting stations:
 import stations
@@ -18,6 +18,9 @@ app = Flask(__name__, static_url_path='')
 app.jinja_env.trim_blocks = True
 app.jinja_env.lstrip_blocks = True
 
+# Need a secret key to use flash for error messages
+app.config['SECRET_KEY'] = 'not really a secret'
+
 
 @app.route('/')
 def home_page():
@@ -25,34 +28,9 @@ def home_page():
 
     now = datetime.now()
 
-    def station_row(stname):
-        if (stname not in stations.last_station_update or
-            now - stations.to_datetime(stations.last_station_update[stname])
-            > timedelta(days=7)):
-            style = "historic"
-        else:
-            style = "current"
-        return '<tr class="%s"><th>%s</th>\n' \
-                '  <td><a href="/details/%s">Details</a></td>\n' \
-                '  <td><a href="/weekly/%s">Weekly</a></td>\n' \
-                '  <td><a href="/plot/%s">Plots</a></td>\n' \
-                '  <td>(last updated %s)</td></tr>\n' \
-                % (style, stname, stname, stname, stname,
-                   stations.last_station_update[stname])
-
-    htmlcontent = ""
-
-    for stname in stations.stations:
-        htmlcontent += station_row(stname)
-    for stname in stations.last_station_update:
-        if stname not in stations.stations:
-            htmlcontent += station_row(stname)
-
-    # To pass HTML to a jinja template without escaping it,
-    # the template must use: {{ htmlcontent|safe }}
     return render_template('index.html',
                            title="Watch Weather: Menu",
-                           htmlcontent=htmlcontent)
+                           stations=stations.stations)
 
 
 @app.route('/stations')
@@ -61,12 +39,11 @@ def show_stations():
     """
     stations.initialize()
 
-    htmlcontent=stations.stations_summary()
-
     return render_template('stations.html',
                            title="Watchweather: Stations Reporting",
-                           refresh=30,
-                           htmlcontent=htmlcontent)
+                           refresh=60,
+                           showkeys=[ 'temperature', 'humidity', 'rain_daily' ],
+                           showstations=stations.stations)
 
 
 @app.route('/details/<stationname>')
@@ -75,20 +52,18 @@ def details(stationname):
     """
     stations.initialize()
 
-    try:
-        details = stations.station_details(stationname)
-    except KeyError:
-        details = "No station named %s" % stationname
-
     if stationname == "all":
         title = "All Stations"
+        showstations = stations.stations
     else:
         title = "%s Details" % stationname
+        showstations = { stationname : stations.stations[stationname] }
 
     return render_template('details.html',
                            title=title,
                            stationname=stationname,
-                           htmlcontent=details)
+                           field_order = stations.get_field_order(),
+                           showstations=showstations)
 
 
 @app.route('/weekly/<stationname>', methods=['POST', 'GET'])
@@ -98,15 +73,38 @@ def weekly(stationname):
     stations.initialize()
 
     try:
-        htmlcontent = stations.station_weekly(stationname)
+        data = stations.station_weekly(stationname)
     except KeyError as e:
-        htmlcontent = "No station named %s: %s" % (stationname, e)
+        data = "No station named %s: %s" % (stationname, e)
     # XXX maybe add a case that catches other exceptions
 
-    return render_template('details.html',
+    return render_template('timereport.html',
                            title="Weekly report for %s station" % stationname,
                            stationname=stationname,
-                           htmlcontent=htmlcontent)
+                           data=stations.station_weekly(stationname))
+
+
+# Some Jinja formatting filters
+
+@app.template_filter('prettyname')
+def prettyname_filter(s):
+    try:
+        return s.replace('_', ' ').title()
+    except:
+        return s
+
+
+@app.template_filter('prettydata')
+def prettydata_filter(x, fieldname=None, roundmore=False):
+    if not x:
+        return ''
+    if type(x) is not float:
+        return x
+    if fieldname and "rain" in fieldname.lower():
+        return "%.2f" % x
+    elif roundmore:
+        return "%d" % round(x)
+    return "%.1f" % x
 
 
 @app.route('/report/<stationname>', methods=['POST', 'GET'])
@@ -175,8 +173,13 @@ def plot(stationname, starttime=None, endtime=None):
     # Now st and et are datetimes, starttime and endtime are unix time.
 
     # Plotting a daily value is easy
-    dailydata = stations.read_daily_data(stationname, ['rain_daily'],
-                                         st, et)
+    try:
+        dailydata = stations.read_daily_data(stationname, ['rain_daily'],
+                                             st, et)
+    except:
+        flash("Sorry, don't have data to plot %s from %s to %s"
+              % (stationname, st, et))
+        return home_page()
 
     # More granular values may need resampling
     hourlydata = stations.read_csv_data_resample(stationname,
