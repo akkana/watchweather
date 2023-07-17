@@ -14,7 +14,9 @@
 
 <tr class="{{ style }}"><th>{{ stname }}<th>
   <td><a href="/details/{{ stname }}">Details</a></td>
-  <td><a href="/weekly/{{ stname }}">Weekly</a></td>
+  <td><a href="/cumulative/{{ stname }}/week">Week</a></td>
+  <td><a href="/cumulative/{{ stname }}/month">Month</a></td>
+  <td><a href="/cumulative/{{ stname }}/year/month">Year</a></td>
   <td><a href="/plot/{{ stname }}">Plots</a></td>
   <td>(last updated {{ stations[stname].time.strftime("%H:%M %a %b %d %Y") }})</td>
 </tr>

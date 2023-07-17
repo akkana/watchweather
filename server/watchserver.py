@@ -62,7 +62,7 @@ def details(stationname):
     return render_template('details.html',
                            title=title,
                            stationname=stationname,
-                           field_order = stations.get_field_order(),
+                           field_order = stations.get_field_order_fmt(),
                            showstations=showstations)
 
 
@@ -81,7 +81,41 @@ def weekly(stationname):
     return render_template('timereport.html',
                            title="Weekly report for %s station" % stationname,
                            stationname=stationname,
-                           data=stations.station_weekly(stationname))
+                           data=data)
+
+
+@app.route('/cumulative/<stationname>/<days>', methods=['POST', 'GET'])
+@app.route('/cumulative/<stationname>/<days>/<chunkdays>',
+           methods=['POST', 'GET'])
+def cumulative(stationname, days, chunkdays=1):
+    """Summarize details for a station for some time period.
+       <days> can be an integer number of days,
+       or week, month, year.
+    """
+    stations.initialize()
+
+    try:
+        days = int(days)
+        title = "Last %d days report for %s station" % (days, stationname)
+    except:
+        title = "Past %s's report for %s station" % (days, stationname)
+
+    if chunkdays == "month":
+        title += " by month"
+    elif chunkdays != 1:
+        title += ", %s days at a time" % chunkdays
+
+    try:
+        data = stations.station_historic(stationname, days, chunkdays)
+    except KeyError as e:
+        data = "No station named %s: %s" % (stationname, e)
+    # XXX maybe add a case that catches other exceptions
+
+    return render_template('timereport.html',
+                           title=title,
+                           stationname=stationname,
+                           field_order = stations.get_field_order(),
+                           data=data)
 
 
 # Some Jinja formatting filters

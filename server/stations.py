@@ -192,8 +192,6 @@ def update_station(station_name, station_data):
        station_data is a dictionary.
        Also prune the list of stations.
     """
-    global field_order, field_order_fmt
-
     # station_data is all strings since it came in through JSON.
     # Parse it to something more useful.
     for key in station_data:
@@ -201,14 +199,6 @@ def update_station(station_name, station_data):
             station_data[key] = parse(station_data[key])
 
     stations[station_name] = station_data
-
-    if not field_order:
-        read_field_order_file()
-    if not field_order:
-        print("No field order file! Using keys from the first report.",
-              sys.stderr)
-        field_order = station_data.keys()
-        field_order_fmt = field_order
 
     # Make sure it's also in last_station_update
     last_station_update[station_name] = to_day(stations[station_name]['time'])
@@ -223,10 +213,12 @@ def update_station(station_name, station_data):
         with open(datafilename, "a") as datafile:
             # Write a header if the file was just created:
             if not there_already:
-                print(','.join(field_order), file=datafile)
+                print(','.join(get_field_order()), file=datafile)
 
             csvfields = []
             for field in field_order:
+                if field not in station_data:
+                    continue
                 if field == 'time':
                     csvfields.append(station_data[field].strftime("%Y-%m-%d %H:%M:%S"))
                 elif field in station_data:
@@ -258,19 +250,6 @@ def prune_stations():
 
     for d in deleted_stations:
         del stations[d]
-
-
-def get_field_order():
-    if field_order_fmt:
-        return field_order_fmt
-
-    fields = []
-    for stname in stations:
-        for f in stations[stname]:
-            if f not in fields:
-                fields.append(f)
-
-    return fields
 
 
 class StatFields:
@@ -312,8 +291,12 @@ high:    %.2f""" % (self.total, self.n, self.average(), self.low, self.high)
         return self.total / self.n
 
 
-def station_weekly(stationname):
-    """Build a weekly summary for one station.
+def station_historic(stationname, days, chunkdays=1):
+    """Build a historic summary for one station.
+       days may be an integer number of days, or string "week", "month", "year"
+       chunkdays controls how many lines to print, e.g.
+       days="year" with chunksize=7 will print accumulated values for each week.
+       chunkdays can also be "month" to show monthly totals.
        Return a list of dictionaries, keys "date", "Temperature Low", etc.
     """
     if not savedir:
@@ -321,11 +304,44 @@ def station_weekly(stationname):
 
     lastdate = to_day(last_station_update[stationname])
 
-    # Look at last 7 days
-    day = (lastdate - timedelta(days=7))
+    # Find the starting day based on days value
+    if days == "week":
+        days = 7
+        day = (lastdate - timedelta(days=days))
+    elif days == "month":
+        # alas, there's no timedelta(months=1)
+        if lastdate.month == 1:
+            day = date(lastdate.year - 1, 12, lastdate.day)
+        else:
+            day = lastdate.replace(month=lastdate.month - 1)
+    elif days == "year":
+        day = lastdate.replace(year=lastdate.year - 1)
+    else:
+        days = int(days)
+        day = (lastdate - timedelta(days=days))
+
+    if chunkdays == 'month':
+        # Beginning of the month following day
+        month = day.month + 1
+        year = day.year
+        if month > 12:
+            month = 1
+            year += 1
+        day = date(year, month, 1)
+    else:
+        try:
+            chunkdays = int(chunkdays)
+        except:
+            print("Illegal value for chunkdays:", chunkdays, file=sys.stderr)
+            chunkdays = 1
 
     # Fields that don't need any statistics: just take the last number.
-    fields = ["rain_daily", "rain_event", "rain_monthly", "rain_yearly"]
+    # Or, in case of chunking, sum the days-end "rain_daily" to "rain"
+    # and skip the other rain fields.
+    if chunkdays == 1:
+        fields = [ "rain_daily", "rain_event", "rain_monthly", "rain_yearly" ]
+    else:
+        fields = [ "rain" ]
 
     ret = []
 
@@ -336,18 +352,71 @@ def station_weekly(stationname):
     rainfall_event = 0.
     last_rain_day = date(1970, 1, 1)
 
-    # clientname-YYYY-MM-DD
+    # Show highs and lows for these fields
+    highlowfields = { "temperature": None,
+                      "average_wind": None,
+                      "gust_speed": None
+                    }
+    # For some fields, lows are meaningless, it's always zero
+    highs_only = ("average_wind", "gust_speed")
+
+    curdic = {}
+
+    def reset_fields(endday):
+        """Save data accumulated over days, and reset
+           to start new accumulations
+        """
+        nonlocal curdic
+
+        # curdic always starts with at least one field, date
+        # (necessary for date to be listed first in the HTML)
+        # so just checking if curdic doesn't work.
+        if curdic and len(curdic.keys()) > 1:
+            # Associate the data in curdic with the last date in the window,
+            # not the first. If this is averaged over more than one day,
+            # show the range in a hopefully easily readable format.
+            if chunkdays == 'month':
+                curdic["date"] = "%s %s %02d-%02d" % (
+                    curdic["date"].year, curdic["date"].strftime("%b"),
+                    curdic["date"].day, endday.day)
+            elif chunkdays > 1:
+                curdic["date"] = "%s - %s" % (curdic["date"], str(endday))
+            elif endday.day == 1:
+                curdic["date"] = endday.strftime("%Y %b %-d")
+            else:
+                curdic["date"] = endday.strftime("%b %-d")
+
+            ret.append(curdic)
+
+        for key in highlowfields:
+            highlowfields[key] = StatFields()
+        # date field will be replaced by the last day, but the field
+        # needs to be set first so it will show up first in the data
+        # passed from cumulative() to timereport.html.
+        # Save the actual date object, not the str of it,
+        # so it can be formatted appropriately later.
+        curdic = { "date": day }
+
+    reset_fields(day)
+    daychunk = 0
+
     while day <= lastdate:
+        if chunkdays == 'month':
+            if day.day == 1:
+                yesterday = day - timedelta(days=1)
+                reset_fields(yesterday)
+                daychunk = 0
+        elif daychunk >= chunkdays:
+            # day is the first day *after* the chunk ends.
+            # So pass yesterday's date.
+            yesterday = day - timedelta(days=1)
+            reset_fields(yesterday)
+            daychunk = 0
+
+        # Data files are named clientname-YYYY-MM-DD
         daystr = day.strftime("%Y-%m-%d")
         datafilename = os.path.join(savedir,
                                     "%s-%s.csv" % (stationname, daystr))
-        # Show highs and lows for these fields
-        highlowfields = {"temperature": StatFields(),
-                         "average_wind": StatFields(),
-                         "gust_speed": StatFields()
-                        }
-        # For some fields, lows are meaningless, it's always zero
-        highs_only = ("average_wind", "gust_speed")
         try:
             with open(datafilename, "r") as datafp:
                 reader = csv.DictReader(datafp)
@@ -360,25 +429,29 @@ def station_weekly(stationname):
                         except:
                             continue
         except FileNotFoundError:
-            print("No file on", datafilename, file=sys.stderr)
+            # print("No file on", datafilename, file=sys.stderr)
             day += timedelta(days=1)
             continue
 
         # The last row contains the rainfall for the day
         if 'rain_daily' in row and row['rain_daily']:
             row['rain_daily'] = float(row['rain_daily'])
-        if row['rain_daily']:
             rainfall_event += row['rain_daily']
             last_rain_day = day
+            row["rain_event"] = rainfall_event
         else:
             rainfall_event = 0.
-        row["rain_event"] = rainfall_event
-
-        curdic = { "date": str(day) }
 
         # take "fields" from only the day's last row
         for f in fields:
-            if f in row and row[f]:
+            if f == "rain":
+                if 'rain_daily' in row and row['rain_daily']:
+                    if f not in curdic or not curdic[f]:
+                        curdic[f] = 0.
+                    curdic[f] += row['rain_daily']
+                elif f not in curdic:
+                    curdic[f] = 0.
+            elif f in row and row[f]:
                 curdic[f] = row[f]
             else:
                 curdic[f] = None
@@ -394,11 +467,19 @@ def station_weekly(stationname):
             else:
                 curdic[f + " High"] = None
 
-        ret.append(curdic)
-
         day += timedelta(days=1)
+        daychunk += 1
+
+    reset_fields(lastdate)
 
     return ret
+
+
+def station_weekly(stationname):
+    """Build a weekly summary for one station.
+       Return a list of dictionaries, keys "date", "Temperature Low", etc.
+    """
+    return station_historic(stationname, days=7)
 
 
 #
@@ -577,28 +658,58 @@ def read_csv_data_resample(stationname, valtypes,
     return retdata
 
 
+def get_field_order_fmt():
+    if not field_order_fmt:
+        read_field_order_file()
+
+    return field_order_fmt
+
+
+def get_field_order():
+    global field_order
+
+    if not field_order:
+        field_order = [ f for f in get_field_order_fmt() if f ]
+
+    return field_order
+
+
 def read_field_order_file():
-    global field_order, field_order_fmt
+    global field_order_fmt
 
     configfile = os.path.expanduser("~/.config/watchweather/fields")
 
     try:
-        fp = open(configfile)
+        with open(configfile) as fp:
+            for line in fp:
+                line = line.strip()
+                if line.startswith('#'):
+                    continue
+                field_order_fmt.append(line)
+        return field_order_fmt
+
     except:
-        return
+        # Default field order
+        field_order_fmt = [ "time",
+                            "",
+                            "temperature", "humidity",
+                            "",
+                            "average_wind", "gust_speed",
+                            "max_gust", "wind_direction",
+                            "",
+                            "rain_hourly", "rain_daily", "rain_weekly",
+                            "rain_monthly", "rain_yearly",
+                            "",
+                            "absolute_pressure", "relative_pressure",
+                            "",
+                            "uv", "solar_radiation"
+                           ]
 
-    if not field_order_fmt:
-        field_order_fmt = []
-
-    for line in fp:
-        line = line.strip()
-        if line.startswith('#'):
-            continue
-        field_order_fmt.append(line)
-
-    fp.close()
-
-    field_order = [ f for f in field_order_fmt if f ]
+        # Add any extra fields that might be found in any stations
+        for stname in stations:
+            for f in stations[stname]:
+                if f not in field_order_fmt:
+                    field_order_fmt.append(f)
 
 
 if __name__ == '__main__':
