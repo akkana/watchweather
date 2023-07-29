@@ -130,6 +130,8 @@ def prettyname_filter(s):
 
 @app.template_filter('prettydata')
 def prettydata_filter(x, fieldname=None, roundmore=False):
+    """Jinja filter for displaying data: e.g. round to some sane level
+    """
     if not x:
         return ''
     if type(x) is not float:

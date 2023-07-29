@@ -372,6 +372,7 @@ def station_historic(stationname, days, chunkdays=1):
         # (necessary for date to be listed first in the HTML)
         # so just checking if curdic doesn't work.
         if curdic and len(curdic.keys()) > 1:
+            # Date determination and formatting.
             # Associate the data in curdic with the last date in the window,
             # not the first. If this is averaged over more than one day,
             # show the range in a hopefully easily readable format.
@@ -384,7 +385,7 @@ def station_historic(stationname, days, chunkdays=1):
             elif endday.day == 1:
                 curdic["date"] = endday.strftime("%Y %b %-d")
             else:
-                curdic["date"] = endday.strftime("%b %-d")
+                curdic["date"] = endday.strftime("%a %b %-d")
 
             ret.append(curdic)
 
