@@ -134,6 +134,8 @@ def prettydata_filter(x, fieldname=None, roundmore=False):
     """
     if not x:
         return ''
+    if type(x) is str:
+        return x.replace('\n', '<br>')
     if type(x) is not float:
         return x
     if fieldname and "rain" in fieldname.lower():
@@ -265,4 +267,3 @@ def plot(stationname, starttime=None, endtime=None):
                            starttime=starttime, endtime=endtime,
                            dailydata=dailydata,
                            hourlydata=hourlydata)
-

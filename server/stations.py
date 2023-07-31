@@ -300,7 +300,7 @@ def station_historic(stationname, days, chunkdays=1):
        Return a list of dictionaries, keys "date", "Temperature Low", etc.
     """
     if not savedir:
-        raise RuntimeError("No data dir, can't show a weekly summary")
+        raise RuntimeError("No data dir, can't show historic summaries")
 
     lastdate = to_day(last_station_update[stationname])
 
@@ -343,7 +343,7 @@ def station_historic(stationname, days, chunkdays=1):
     else:
         fields = [ "rain" ]
 
-    ret = []
+    retdata = []
 
     # A rainfall "event" means rain that has occurred without a break
     # of 24 hours or more. But that's tricky to calculate since the
@@ -387,7 +387,7 @@ def station_historic(stationname, days, chunkdays=1):
             else:
                 curdic["date"] = endday.strftime("%a %b %-d")
 
-            ret.append(curdic)
+            retdata.append(curdic)
 
         for key in highlowfields:
             highlowfields[key] = StatFields()
@@ -460,20 +460,45 @@ def station_historic(stationname, days, chunkdays=1):
         for f in highlowfields:
             if f not in highs_only:
                 if highlowfields[f].low < sys.maxsize:
-                    curdic[f + " Low"] = highlowfields[f].low
+                    curdic[f + " low"] = highlowfields[f].low
                 else:
-                    curdic[f + " Low"] = None
+                    curdic[f + " low"] = None
             if highlowfields[f].high > 0:
-                curdic[f + " High"] = highlowfields[f].high
+                curdic[f + " high"] = highlowfields[f].high
             else:
-                curdic[f + " High"] = None
+                curdic[f + " high"] = None
 
         day += timedelta(days=1)
         daychunk += 1
 
     reset_fields(lastdate)
 
-    return ret
+    # Now get summaries: highest high, lowest low, total rain
+    # print("historic data:")
+    # from pprint import pprint
+    # pprint(retdata)
+    summaries = { "date": "Total\nLowest low\nHighest high" }
+    for chunk in retdata:
+        for key in chunk:
+            if key == "date":
+                continue
+            if key not in summaries:
+                summaries[key] = chunk[key]
+                continue
+            if key.endswith("low"):
+                if chunk[key] < summaries[key]:
+                    summaries[key] = chunk[key]
+                continue
+            if key.endswith("high"):
+                if chunk[key] > summaries[key]:
+                    summaries[key] = chunk[key]
+                continue
+            # If it doesn't have "low" or "high" in it, take a total sum
+            summaries[key] += chunk[key]
+
+    retdata.append(summaries)
+
+    return retdata
 
 
 def station_weekly(stationname):
