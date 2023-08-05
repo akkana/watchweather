@@ -267,3 +267,30 @@ def plot(stationname, starttime=None, endtime=None):
                            starttime=starttime, endtime=endtime,
                            dailydata=dailydata,
                            hourlydata=hourlydata)
+
+
+@app.route('/api/compact/<stationname>')
+def compact_data(stationname):
+    """CURRENTLY ONLY A PLACEHOLDER.
+       When implemented, this will 
+    """
+    stations.initialize()
+
+    st = date(2023, 6, 1)
+    et = date(2023, 7, 1)
+    data = stations.read_csv_data_resample(stationname,
+                                                 ['temperature',
+                                                  'humidity',
+                                                  'gust_speed',
+                                                  'max_gust'],
+                                           st, et,
+                                           timedelta(hours=1))
+    title = "Bogo-resample"
+    from pprint import pprint
+    pprint(data)
+
+    return render_template('timereport.html',
+                           title=title,
+                           stationname=stationname,
+                           field_order = stations.get_field_order(),
+                           data=data)

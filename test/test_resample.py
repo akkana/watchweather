@@ -131,6 +131,12 @@ class ResampleTest(unittest.TestCase):
         # from pprint import pprint
         # pprint(rsdata)
 
+    def test_compaction(self):
+        """Compact a year's worth of stationname-yyyy-mm-dd.csv files
+           into a single file with one entry per day.
+        """
+        pass
+
 
 if __name__ == '__main__':
     unittest.main()
