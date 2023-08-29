@@ -211,10 +211,10 @@ def update_station(station_name, station_data):
                            station_data['time'].strftime("%Y-%m-%d")))
         there_already =  os.path.exists(datafilename)
 
-        with open(datafilename, "a") as datafile:
+        with open(datafilename, "a") as datafp:
             # Write a header if the file was just created:
             if not there_already:
-                print(','.join(get_field_order()), file=datafile)
+                print(','.join(get_field_order()), file=datafp)
 
             csvfields = []
             for field in field_order:
@@ -226,12 +226,12 @@ def update_station(station_name, station_data):
                     csvfields.append(str(station_data[field]))
                 else:
                     csvfields.append('')
-            print(','.join(csvfields), file=datafile)
+            print(','.join(csvfields), file=datafp)
 
         # To write in JSONL instead:
-        # with open(datafilename, "a") as datafile:
-        #     datafile.write(json.dumps(station_data, default=json_serial))
-        #     datafile.write('\n')
+        # with open(datafilename, "a") as datafp:
+        #     datafp.write(json.dumps(station_data, default=json_serial))
+        #     datafp.write('\n')
 
     prune_stations()
 
@@ -254,6 +254,9 @@ def prune_stations():
 
 
 class StatField:
+    """A field for accumulating numbers storing average, max, min.
+    """
+
     def __init__(self):
         self.reset()
 
@@ -556,11 +559,11 @@ def read_daily_data(stationname, valtypes, start_date, end_date):
 
     while day <= end_date:
         daystr = day.strftime("%Y-%m-%d")
-        datafile = os.path.join(savedir,
-                                "%s-%s.csv" % (stationname, daystr))
+        datafilename = os.path.join(savedir,
+                                    "%s-%s.csv" % (stationname, daystr))
 
         try:
-            datafp = open(datafile)
+            datafp = open(datafilename)
             csvreader = csv.DictReader(datafp)
             for row in csvreader:
                 continue
@@ -641,10 +644,10 @@ def read_csv_data_resample(stationname, valtypes,
 
             # Otherwise, try to open the next day's file.
             daystr = day.strftime("%Y-%m-%d")
-            datafile = os.path.join(savedir,
-                                    "%s-%s.csv" % (stationname, daystr))
+            datafilename = os.path.join(savedir,
+                                        "%s-%s.csv" % (stationname, daystr))
             try:
-                datafp = open(datafile)
+                datafp = open(datafilename)
                 csvreader = csv.DictReader(datafp)
                 t0 = to_datetime(max(to_datetime(day), start_time))
             except FileNotFoundError:
@@ -693,24 +696,21 @@ def read_csv_data_resample(stationname, valtypes,
 
 def compact_stations(stationname):
     """Rewrite historic data from past years into a more compact format.
-       Write daily files with readings once an hour instead of every 30 seconds,
-       and monthly files with averages over each day.
+       Write two sets of summary files:
+       hourly, covering a month by hours, and daily, covering a year by days.
        Keep everything from the current year.
        Move summarized files to savedir/archived.
 
        Input datafiles are named servername-yyyy-mm-dd.csv
-
-       Original headers:
-         time,temperature,humidity,average_wind,gust_speed,max_gust,wind_direction,rain_hourly,rain_daily,rain_weekly,rain_monthly,rain_yearly,absolute_pressure,relative_pressure,uv,solar_radiation
-       Desired headers:
-         time,min_temperature,max_temperature,min_humidity,max_humidity,max_wind,max_gust,av_wind_direction,stdev_wind_direction,rain,min_pressure,max_pressure,max_uv,max_solar_radiation
+       Output datafiles are servername-yyyy-mm-hourly.csv
+       and servername-yyyy-daily.csv
     """
-    # XXX TESTING XXX
-    savedir = "test/compact"
-
     if not savedir:
         initialize()
 
+    today = date.today()
+
+    # Headers in the original 30-second data:
     orig_hdrs = [ "time", "temperature", "humidity",
                   "average_wind", "gust_speed", "max_gust", "wind_direction",
                   "rain",
@@ -718,6 +718,7 @@ def compact_stations(stationname):
                   # "rain_weekly", "rain_monthly", "rain_yearly",
                   "absolute_pressure", # "relative_pressure",
                   "uv", "solar_radiation" ]
+    # Headers for the summary files:
     stat_hdrs = [ "time", "min_temperature", "max_temperature",
                   "min_humidity", "max_humidity", "max_wind", "max_gust",
                   # "av_wind_direction", "stdev_wind_direction",
@@ -725,9 +726,14 @@ def compact_stations(stationname):
                   "min_pressure", "max_pressure",
                   "max_uv", "max_solar_radiation" ]
 
+    # Save the summary files in savedir, and
+    # move the summarized files to this directory:
     archivedir = os.path.join(savedir, "archived")
     if not os.path.exists(archivedir):
         os.mkdir(archivedir)
+
+    # Keep a list of files to move, but don't move them til the end
+    files_summarized = []
 
     thisyear = date.today().year
 
@@ -735,27 +741,30 @@ def compact_stations(stationname):
     datafiles.sort()
 
     # Accumulate hourly stats over the course of a month
-    hourlystats = {}
+    hourlystats = { "time": None }
     monthfp = None
     # and daily stats over the course of a year
-    dailystats = {}
+    dailystats = { "time": None }
     yearfp = None
 
     # The date of the last file processed
-    last_file_date = datetime(1970, 1, 1, 1, 0, 0)
+    last_file_date = date(1970, 1, 1)
 
     def zero_stats(whichstats):
-        # Initialize the stats the first time through
+        # Starting a new chunk; initialize stat fields for every column
+        # except time.
         for colname in orig_hdrs:
             if colname == 'time':
-                continue
-            whichstats[colname] = StatField()
+                whichstats[colname] = None
+            else:
+                whichstats[colname] = StatField()
 
     def write_stats(stats, fp):
         """Writes a dictionary of StatFields to the given file."""
         outdata = []
         # time
         outdata.append(stats["time"])
+
         # min_temperature
         outdata.append(f'{stats["temperature"].low}')
         # max_temperature
@@ -793,6 +802,8 @@ def compact_stations(stationname):
 
     stationstart = stationname + '-'
     stationstartlen = len(stationstart)
+    yearfp = None
+    monthfp = None
     for f in datafiles:
         if not f.startswith(stationstart):
             continue
@@ -802,51 +813,56 @@ def compact_stations(stationname):
             # [ stationname, year, month, day ] as strings
         file_date = date(*map(int, filenameparts[1:]))
 
-        # New year? Close the current year file and open a new one.
+        # New year? Close the current year output file and open a new one.
         if file_date.year != last_file_date.year:
-            # XXX TEMP FOR TESTING
             if yearfp:
+                if dailystats["time"]:
+                    write_stats(dailystats, yearfp)
+                    write_stats(hourlystats, yearfp)
                 yearfp.close()
-            yearfp = open(os.path.join(archivedir,
-                                       "%s-%04d-daily.csv" % (stationname,
-                                                              file_date.year)),
-                          'w')
+                yearfp = None
+                zero_stats(dailystats)
+        if not yearfp:
+            yearfile = "%s-%04d-daily.csv" % (stationname, file_date.year)
+            yearfp = open(os.path.join(savedir, yearfile), 'w')
             print(','.join(stat_hdrs), file=yearfp)
 
-        # New month? Close the current month file and open a new one.
+        # New month? Close the current month output file and open a new one.
         if file_date.month != last_file_date.month:
             if monthfp:
                 monthfp.close()
-            monthfp = open(os.path.join(
-                archivedir, "%s-%04d-%02d-hourly.csv" % (stationname,
-                                                         file_date.year,
-                                                         file_date.month)),
-                           'w')
+                monthfp = None
+        if not monthfp:
+            monthfile = "%s-%04d-%02d-hourly.csv" % (stationname,
+                                                     file_date.year,
+                                                     file_date.month)
+            zero_stats(hourlystats)
+            monthfp = open(os.path.join(savedir, monthfile), 'w')
             print(','.join(stat_hdrs), file=monthfp)
 
-        # Tried to use numpy, but np.genfromtxt is just too braindead
-        # about reading data from CSV files and including a date field.
-        last_hour = 23
+        # Loop over the daily files that typically store data every 30 seconds.
+        # (Tried to use numpy, but np.genfromtxt is just too braindead
+        # about reading data from CSV files and including a date field.)
+        last_hour = -1
         with open(os.path.join(savedir, f)) as infp:
             reader = csv.DictReader(infp)
             for row in reader:
                 t = datetime.strptime(row["time"], "%Y-%m-%d %H:%M:%S")
                 # New day? Write and reset daily stats
-                if (t.day != last_file_date.day
-                    or t.month != last_file_date.month
-                    or t.year != last_file_date.year):
-                    if dailystats:
-                        dailystats["time"] = last_file_date.strftime("%Y-%m-%d")
+                if t.date() != last_file_date:
+                    if dailystats["time"]:
                         write_stats(dailystats, yearfp)
                     zero_stats(dailystats)
+                    dailystats["time"] = "%04d-%02d-%02d %02d" % (
+                        t.year, t.month, t.day, t.hour)
 
                 if t.hour != last_hour:
                     # Done with an hour, time to summarize the last hour
-                    if hourlystats:
-                        hourlystats["time"] = "%04d-%02d-%02d %02d" % (
-                            t.year, t.month, t.day, last_hour)
+                    if hourlystats["time"]:
                         write_stats(hourlystats, monthfp)
                     zero_stats(hourlystats)
+                    hourlystats["time"] = "%04d-%02d-%02d %02d" % (
+                        t.year, t.month, t.day, t.hour)
 
                 for colname in orig_hdrs:
                     if colname == "time":
@@ -854,7 +870,7 @@ def compact_stations(stationname):
                     try:
                         # Rainfall comes as hourly or daily chunks;
                         # accumulating more often than that results in
-                        # much too big a number, so it's treated specially.
+                        # multiple adds, so it's treated specially.
                         # Don't actually accumulate it, just replace it
                         # each time so at the end of the time period
                         # (day or hour) it will be the correct value.
@@ -875,10 +891,22 @@ def compact_stations(stationname):
                 last_hour = t.hour
                 last_file_date = file_date
 
+            # Done with reading all the rows in day file f.
+            if dailystats['time']:
+                write_stats(dailystats, yearfp)
+            if hourlystats['time']:
+                write_stats(hourlystats, monthfp)
+
             infp.close()
+            files_summarized.append(f)
 
     monthfp.close()
     yearfp.close()
+
+    # Move files summarized to the archive
+    for f in files_summarized:
+        os.rename(os.path.join(savedir, f),
+                  os.path.join(archivedir, f))
 
 
 def get_field_order_fmt():
@@ -936,10 +964,6 @@ def read_field_order_file():
 
 
 if __name__ == '__main__':
-    # XXX TESTING
-    compact_stations("Outdoor")
-    sys.exit(0)
-
     initialize()
     print(stations_as_html())
 
