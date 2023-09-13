@@ -135,11 +135,11 @@ class ResampleTest(unittest.TestCase):
                                           date(2022, 6, 28))
         roundoff_floats(rsdata)
         self.assertEqual(rsdata, {
-            't':          [date(2022, 6, 25),
-                           date(2022, 6, 26),
-                           date(2022, 6, 27),
-                           date(2022, 6, 28)
-                           ]
+            't': [date(2022, 6, 25),
+                  date(2022, 6, 26),
+                  date(2022, 6, 27),
+                  date(2022, 6, 28)
+                  ],
             'rain_daily': [0.559, 1.232, 0.472, 0.0],
         })
 

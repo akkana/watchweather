@@ -34,9 +34,13 @@ EOF
 Then run the server:
 
 ```
+export WATCHWEATHER_KEY=[some long random string]
 export FLASK_APP=server/watchserver.py
 flask run
 ```
+
+The key is optional for testing, but you should set it for production
+so random people won't be able to trigger your API calls.
 
 If you want to disable debug mode so you can access the server
 from another machine:

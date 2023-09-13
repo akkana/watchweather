@@ -4,9 +4,11 @@ from datetime import datetime, date, timedelta
 from time import mktime
 from math import ceil, floor
 
+import os, sys
+
 from flask import Flask, request, url_for, render_template, redirect, flash
 
-# The code to keep track of our reporting stations:
+# The code to keep track of the reporting stations:
 import stations
 
 
@@ -18,8 +20,15 @@ app = Flask(__name__, static_url_path='')
 app.jinja_env.trim_blocks = True
 app.jinja_env.lstrip_blocks = True
 
-# Need a secret key to use flash for error messages
-app.config['SECRET_KEY'] = 'not really a secret'
+# Flask needs a secret key to use flash for error messages.
+# It's also used for /api calls.
+# Define it as a long string in WATCHWEATHER_KEY, e.g.
+try:
+    app.config['SECRET_KEY'] = os.environ["WATCHWEATHER_KEY"]
+except KeyError:
+    app.config['SECRET_KEY'] = 'not-really-a-secret'
+    print("""*** Warning: using non-secret key.
+Set WATCHWEATHER_KEY in your env to a better one.""", file=sys.stderr)
 
 
 @app.route('/')
@@ -35,7 +44,7 @@ def home_page():
 
 @app.route('/stations')
 def show_stations():
-    """Display a page showing all currently reporting stations.
+    """Display a page summarizing all currently reporting stations.
     """
     stations.initialize()
 
@@ -269,28 +278,20 @@ def plot(stationname, starttime=None, endtime=None):
                            hourlydata=hourlydata)
 
 
-@app.route('/api/compact/<stationname>')
-def compact_data(stationname):
-    """CURRENTLY ONLY A PLACEHOLDER.
-       When implemented, this will 
+@app.route('/api/compact/<stationname>/<key>')
+def compact_data(stationname, key):
+    """Run stations.compact_stations(stationname)
+       to collapse the fine-grained half-minute data in daily files
+       to a single file per month with hourly data,
+       saving the half-minute data in an archive directory
+       where it can be backed up and then removed.
+       stationname may be "all".
     """
+    if key != app.config["SECRET_KEY"]:
+        return "FAIL Bad key\n"
+
     stations.initialize()
 
-    st = date(2023, 6, 1)
-    et = date(2023, 7, 1)
-    data = stations.read_csv_data_resample(stationname,
-                                                 ['temperature',
-                                                  'humidity',
-                                                  'gust_speed',
-                                                  'max_gust'],
-                                           st, et,
-                                           timedelta(hours=1))
-    title = "Bogo-resample"
-    from pprint import pprint
-    pprint(data)
+    stations.compact_stations(stationname)
 
-    return render_template('timereport.html',
-                           title=title,
-                           stationname=stationname,
-                           field_order = stations.get_field_order(),
-                           data=data)
+    return f"Compacted station(s) {stationname}"

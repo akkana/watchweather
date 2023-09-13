@@ -73,58 +73,64 @@ def initialize(expiration=None, savedir_path=None):
     now = datetime.now()
     for csvfilename in sorted(os.listdir(savedir), reverse=True):
         # Valid filenames are like "Stationname-2021-08-27.csv"
-        try:
-            m = re.match(r'(.*)-(\d\d\d\d-\d\d-\d\d)\.csv', csvfilename)
-            if not m:
-                print("Illegal historic file", csvfilename, file=sys.stderr)
-                continue
-            stationname = m.group(1)
 
-            # Seen this station already? Because of the reverse sort,
-            # the first file seen is the most recent date, so
-            # ignore any subsequent ones.
-            if stationname in last_station_update:
-                continue
+        m = re.match(r'(.*)-(\d\d\d\d-\d\d-\d\d)\.csv', csvfilename)
+        if not m:
+            # print("Ignoring file", csvfilename, file=sys.stderr)
+            continue
+        stationname = m.group(1)
+
+        # Seen this station already? Because of the reverse sort,
+        # the first file seen is the most recent date, so
+        # ignore any subsequent ones.
+        if stationname in last_station_update:
+            continue
+
+        try:
             # there's no date.strptime, alas
             filedate = datetime.strptime(m.group(2), '%Y-%m-%d')
-            last_station_update[stationname] = filedate
-
-            if stationname not in stations:
-                # date recent enough not to have expired?
-                if now - filedate < expire_after:
-                    # set values from the last line of the file,
-                    # which is the most recent update
-                    with open(os.path.join(savedir, csvfilename)) as csvfp:
-                        reader = csv.DictReader(csvfp)
-                        for row in reader:
-                            pass    # ignore everything but the last row
-                                    # XXX this should be done more efficiently
-
-                    # Populate with the values from the last row
-                    stations[stationname] = {}
-                    for field in row:
-                        if field == 'time':
-                            stations[stationname][field] = \
-                                datetime.strptime(row[field],
-                                                  '%Y-%m-%d %H:%M:%S')
-                            last_station_update[stationname] = \
-                                stations[stationname][field]
-                        else:
-                            try:
-                                stations[stationname][field] = \
-                                    float(row[field])
-                            except ValueError:
-                                stations[stationname][field] = row[field]
-                # else:
-                #     print(stationname, ": last update was too old",
-                #           filedate, "older than", expire_after)
-
-
         except Exception as e:
             print("Exception parsing filename %s: %s" % (csvfilename, e),
                   file=sys.stderr)
             continue
 
+        last_station_update[stationname] = filedate
+
+        if stationname in stations:
+            # We've already seen this station
+            continue
+
+        # Is the date too old?
+        if now - filedate >= expire_after:
+            # print(stationname, ": last update was too old",
+            #       filedate, "older than", expire_after)
+            continue
+
+        # set values from the last line of the file,
+        # which is the most recent update
+        with open(os.path.join(savedir, csvfilename)) as csvfp:
+            reader = csv.DictReader(csvfp)
+            for row in reader:
+                pass    # ignore everything but the last row
+                        # XXX consider rewriting this to be more efficient
+
+        # Populate with the values from the last row
+        stations[stationname] = {}
+        for field in row:
+            if field == 'time':
+                stations[stationname][field] = \
+                    datetime.strptime(row[field],
+                                      '%Y-%m-%d %H:%M:%S')
+                last_station_update[stationname] = \
+                    stations[stationname][field]
+            else:
+                try:
+                    stations[stationname][field] = float(row[field])
+                except ValueError:
+                    stations[stationname][field] = row[field]
+                except TypeError:
+                    # stations[stationname][field] = None
+                    pass
 
     # To get a list of bogus stations for testing, uncomment the next line:
     # populate_bogostations(5)
@@ -490,6 +496,8 @@ def station_historic(stationname, days, chunkdays=1):
     summaries = { "date": "Total\nLowest low\nHighest high" }
     for chunk in retdata:
         for key in chunk:
+            if not chunk[key]:
+                continue
             if key == "date":
                 continue
             if key not in summaries:
@@ -578,7 +586,7 @@ def read_daily_data(stationname, valtypes, start_date, end_date):
                     pass
 
         except FileNotFoundError:
-            print("Skipping", day, ": no data file", sys.stderr)
+            print("Skipping", day, ": no daily data file", file=sys.stderr)
             csvreader = None
 
         day += oneday
@@ -653,7 +661,7 @@ def read_csv_data_resample(stationname, valtypes,
             except FileNotFoundError:
                 # That means there's no data for this day,
                 # so skip to the next day
-                print("Skipping", day, ": no data file", sys.stderr)
+                print("Skipping", day, ": no data file", file=sys.stderr)
                 csvreader = None
                 continue
 
@@ -694,12 +702,13 @@ def read_csv_data_resample(stationname, valtypes,
     return retdata
 
 
-def compact_stations(stationname):
+def compact_stations(whichstations):
     """Rewrite historic data from past years into a more compact format.
        Write two sets of summary files:
        hourly, covering a month by hours, and daily, covering a year by days.
        Keep everything from the current year.
        Move summarized files to savedir/archived.
+       whichstations can be a single station name, or "all".
 
        Input datafiles are named servername-yyyy-mm-dd.csv
        Output datafiles are servername-yyyy-mm-hourly.csv
@@ -800,18 +809,39 @@ def compact_stations(stationname):
         print(','.join(outdata), file=fp)
 
 
-    stationstart = stationname + '-'
-    stationstartlen = len(stationstart)
+    stationstart = whichstations + '-'
     yearfp = None
     monthfp = None
     for f in datafiles:
-        if not f.startswith(stationstart):
-            continue
         if not f.endswith(".csv"):
             continue
+
         filenameparts = f.split('.')[0].split('-')
-            # [ stationname, year, month, day ] as strings
-        file_date = date(*map(int, filenameparts[1:]))
+
+        # hourly or daily files are already compacted
+        if filenameparts[-1] == 'hourly' or filenameparts[-1] == 'daily':
+            continue
+
+        # Get the station name.
+        # The date is the last 3 elements of filenameparts;
+        # the station name is the part preceding that,
+        # which might contain a dash, so allow for that.
+        stationname = '-'.join(filenameparts[:len(filenameparts)-3])
+
+        if whichstations.lower() != "all" and stationname != whichstations:
+            continue
+
+        # filenameparts should be [ stationname, year, month, day ] as strings
+        try:
+            file_date = date(*map(int, filenameparts[-3:]))
+        except (TypeError, ValueError) as e:
+            # skip filenames in the wrong format
+            print(f"Can't compact filename {f}: {e}", file=sys.stderr)
+            continue
+
+        # Don't compact current year
+        if file_date.year == today.year:
+            continue
 
         # New year? Close the current year output file and open a new one.
         if file_date.year != last_file_date.year:
@@ -824,7 +854,8 @@ def compact_stations(stationname):
                 zero_stats(dailystats)
         if not yearfp:
             yearfile = "%s-%04d-daily.csv" % (stationname, file_date.year)
-            yearfp = open(os.path.join(savedir, yearfile), 'w')
+            yearpath = os.path.join(savedir, yearfile)
+            yearfp = open(yearpath, 'w+')
             print(','.join(stat_hdrs), file=yearfp)
 
         # New month? Close the current month output file and open a new one.
@@ -832,6 +863,7 @@ def compact_stations(stationname):
             if monthfp:
                 monthfp.close()
                 monthfp = None
+
         if not monthfp:
             monthfile = "%s-%04d-%02d-hourly.csv" % (stationname,
                                                      file_date.year,
@@ -845,9 +877,22 @@ def compact_stations(stationname):
         # about reading data from CSV files and including a date field.)
         last_hour = -1
         with open(os.path.join(savedir, f)) as infp:
+            print("Compacting", f, file=sys.stderr)
             reader = csv.DictReader(infp)
             for row in reader:
-                t = datetime.strptime(row["time"], "%Y-%m-%d %H:%M:%S")
+                if not row["time"]:
+                    continue
+                try:
+                    t = datetime.strptime(row["time"], "%Y-%m-%d %H:%M:%S")
+                except ValueError:
+                    # Sigh, there's no strptime variant that's agnostic
+                    # about whether the date has decimal seconds,
+                    # and some historic files did that.
+                    t = datetime.strptime(row["time"], "%Y-%m-%d %H:%M:%S.%f")
+                except Exception as e:
+                    print(f"{f}: Couldn't parse time from row {row}",
+                          file=sys.stderr)
+
                 # New day? Write and reset daily stats
                 if t.date() != last_file_date:
                     if dailystats["time"]:
