@@ -493,7 +493,7 @@ def station_historic(stationname, days, chunkdays=1):
     # print("historic data:")
     # from pprint import pprint
     # pprint(retdata)
-    summaries = { "date": "Total\nLowest low\nHighest high" }
+    summaries = { "date": "Total/\nLowest low/\nHighest high" }
     for chunk in retdata:
         for key in chunk:
             if not chunk[key]:
@@ -507,7 +507,7 @@ def station_historic(stationname, days, chunkdays=1):
                 if chunk[key] < summaries[key]:
                     summaries[key] = chunk[key]
                 continue
-            if key.endswith("high"):
+            if key.endswith("high") or key.endswith("monthly") or key.endswith("yearly"):
                 if chunk[key] > summaries[key]:
                     summaries[key] = chunk[key]
                 continue

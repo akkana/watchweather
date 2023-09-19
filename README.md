@@ -18,41 +18,23 @@ any quantities you want to check, report and log. It would be better to
 have a more general name, and if I think of a good name I'll rename the
 repository.
 
-## Running the Server
+The server is based on flask. There are clients based on several
+different sensors (suitable for running on Raspberry Pi) plus a scraper
+for Ambient Weather stations (there's an attempt at reading data
+directly from an ambient station in client/sdr_ambient.py, but I
+never got the software defined radio to work reliably).
 
-To test the watchweather server, first create the needed configuration files:
+## Testing the Server
 
-```
-mkdir ~/.config/watchweather/
-cat >~/.config/watchweather/fields <<EOF
-temperature
-humidity
-rain
-EOF
-```
-
-Then run the server:
+To test-run the server locally:
 
 ```
-export WATCHWEATHER_KEY=[some long random string]
 export FLASK_APP=server/watchserver.py
 flask run
 ```
 
-The key is optional for testing, but you should set it for production
-so random people won't be able to trigger your API calls.
-
-If you want to disable debug mode so you can access the server
-from another machine:
-```
-flask run --host=0.0.0.0
-```
-
-For more debugging messages, try
-```
-export FLASK_DEBUG=1
-```
-though this is deceptive since debug *mode* is already on.
+There's lots more detail on running the server, setting up bogus test data,
+and various modes of running in server/README.md.
 
 ## Client Data Reporting
 
