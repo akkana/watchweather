@@ -49,6 +49,9 @@ WantedBy=multi-user.target
 SENSOR is the name of the sensor module in this directory, without
 the .py extension: for instance, Si7021.
 
+Sadly, ```Restart=always``` doesn't always restart, so you might need
+to check it periodically.
+
 If you need the service to run as a specific user or group other than
 root -- for example, if it needs to authenticate with a web API using
 credentials stored in a file in ~/.config -- you can add them in the
@@ -59,11 +62,21 @@ User=watchweather
 Group=system
 ```
 
-Then run:
+Then run, as root:
 
 ```
-sudo systemctl enable watchweather
-sudo systemctl start watchweather
+systemctl enable watchweather
+systemctl start watchweather
 ```
+
+To query whether it's running:
+systemctl list-units | grep watchweather
 
 Output will show up in /var/log/daemon.log
+
+If it hangs (the Ambient client, in particular, sometimes gets stuck
+waiting on a network response from Ambient):
+
+```
+systemctl restart watchweather
+```
